@@ -4,9 +4,9 @@ import os, pickle, joblib, json
 import numpy as np
 import pandas as pd
 
-from iot_anomaly import engineer_flags, preprocess
+from iot_anomaly.core import engineer_flags, preprocess
 
-MODEL_DIR = "../iot_models/optimized"
+MODEL_DIR = ".../iot_models/optimized"
 
 def load_artifacts():
     """

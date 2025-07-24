@@ -22,8 +22,8 @@ import optuna
 
 
 # configurations
-path = "../data/iot_telemetry_data.csv"
-model_dir = "../iot_models"
+path = ".../data/iot_telemetry_data.csv"
+model_dir = ".../iot_models"
 os.makedirs(model_dir, exist_ok=True)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger()

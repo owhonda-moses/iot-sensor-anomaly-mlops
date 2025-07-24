@@ -12,6 +12,7 @@ WORKDIR /app
 
 # install production dependencies
 COPY pyproject.toml poetry.lock ./
+COPY src/ src/
 RUN poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi --without dev
 
@@ -22,6 +23,8 @@ WORKDIR /app
 # copy packages and app code
 COPY --from=builder /usr/local/lib/python3.11/site-packages/ \
                     /usr/local/lib/python3.11/site-packages/
+COPY --from=builder /usr/local/bin/ \
+                    /usr/local/bin/
 
 COPY . .
 
