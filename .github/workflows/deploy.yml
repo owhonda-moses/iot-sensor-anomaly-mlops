@@ -1,0 +1,82 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  auth-setup:
+    name: Authenticate to GCP
+    runs-on: ubuntu-latest
+    outputs:
+      registry: ${{ steps.set-reg.outputs.artifact_registry }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id:          ${{ secrets.GCP_PROJECT }}
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+
+      - name: Expose registry URL
+        id: set-reg
+        run: |
+          echo "::set-output name=artifact_registry::${{ secrets.ARTIFACT_REGISTRY }}"
+
+  build-and-push:
+    name: Build & Push Images
+    needs: auth-setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build MLflow image
+        run: |
+          docker build -t mlflow:latest docker/mlflow
+          docker tag mlflow:latest \
+            ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
+
+      - name: Push MLflow image
+        run: docker push ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
+
+      - name: Build Prefect-Agent image
+        run: |
+          docker build -t prefect-agent:latest docker/prefect-agent
+          docker tag prefect-agent:latest \
+            ${{ needs.auth-setup.outputs.registry }}/prefect-agent:latest
+
+      - name: Push Prefect-Agent image
+        run: docker push ${{ needs.auth-setup.outputs.registry }}/prefect-agent:latest
+
+  deploy-cloud-run:
+    name: Deploy to Cloud Run
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy MLflow Server
+        uses: google-github-actions/deploy-cloudrun@v1
+        with:
+          service:   mlflow-server
+          image:     ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
+          region:    ${{ secrets.GCP_REGION }}
+          project_id:${{ secrets.GCP_PROJECT }}
+          env_vars: |
+            ARTIFACT_BUCKET=${{ secrets.ARTIFACT_BUCKET }}
+
+      - name: Deploy Prefect Agent
+        uses: google-github-actions/deploy-cloudrun@v1
+        with:
+          service:    prefect-agent
+          image:      ${{ needs.auth-setup.outputs.registry }}/prefect-agent:latest
+          region:     ${{ secrets.GCP_REGION }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+          env_vars: |
+            PREFECT_ORION_URL=https://mlflow-server-${{ secrets.GCP_REGION }}.run.app

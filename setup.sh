@@ -5,7 +5,7 @@ cd /notebooks/iot-mlops
 
 # PAT
 if [ -f pat.env ]; then
-  # chmod 600 pat.env          
+  chmod 600 pat.env          
   source ./pat.env
   echo "PAT loaded."
 else
@@ -33,6 +33,14 @@ source "$(poetry env info --path)/bin/activate"
 echo "Python env ready:$(poetry run python -V)"
 echo "Venv path: $(poetry env info --path)"
 
+# terraform
+if ! command -v terraform >/dev/null 2>&1; then
+  echo "Installing Terraform CLI…"
+  curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
+  apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+  apt-get install -y terraform
+fi
+
 # config
 echo "Configuring git"
 git config --global user.name  "owhonda-moses"
@@ -59,12 +67,8 @@ git checkout main 2>/dev/null || git checkout -b main
 
 echo "Setup complete."
 
-<<<<<<< HEAD
 git fetch origin main --depth=1
-git merge --ff-only origin/main
 
-=======
->>>>>>> origin/main
 # commit changes
 if [ -n "$(git status --porcelain)" ]; then
   echo "#…there are un-committed changes"

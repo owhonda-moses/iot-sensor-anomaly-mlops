@@ -3,7 +3,7 @@ source ./setup.sh
 
 
 curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user | grep login
-
+github-actions-sa@mlops-461322.iam.gserviceaccount.com
 
 
 sudo apt-get install apt-transport-https ca-certificates gnupg curl
@@ -16,6 +16,10 @@ python test.py --single --device 2 --co 0.03 --humidity 45.2 --lpg 0.01 --smoke 
 python test.py --csv ../data/iot_telemetry_data.csv
 
 mlflow ui --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns
+
+poetry export -f requirements.txt \
+  --without-hashes --output requirements.txt
+
 
 
 prefect server start

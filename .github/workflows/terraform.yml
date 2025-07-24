@@ -1,0 +1,36 @@
+name: Terraform
+
+on:
+  push:
+    paths:
+      - 'infra/**'
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+      TF_VAR_project_id:  ${{ secrets.GCP_PROJECT }}
+      TF_VAR_region:      ${{ secrets.GCP_REGION }}
+      TF_VAR_credentials_file: gcp-sa-key.json
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_wrapper: false
+
+      - name: Write GCP key file
+        run: echo "${{ secrets.GCP_SA_KEY }}" > infra/gcp-sa-key.json
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: infra
+        run: terraform apply --auto-approve
+
