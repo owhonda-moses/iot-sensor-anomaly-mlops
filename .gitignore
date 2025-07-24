@@ -43,6 +43,12 @@ venv.bak/
 .DS_Store
 Thumbs.db
 
+# Terraform local directory & state
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/.terraform.lock.hcl
+
 
 data/*.csv
 iot_models/optimized/iso.pkl
