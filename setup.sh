@@ -59,6 +59,9 @@ git checkout main 2>/dev/null || git checkout -b main
 
 echo "Setup complete."
 
+git fetch origin main --depth=1
+git merge --ff-only origin/main
+
 # commit changes
 if [ -n "$(git status --porcelain)" ]; then
   echo "#…there are un-committed changes"
