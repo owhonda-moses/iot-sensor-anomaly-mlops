@@ -45,6 +45,7 @@ Thumbs.db
 
 # Terraform local directory & state
 infra/.terraform/
+infra/gcp-sa-key.json
 infra/*.tfstate
 infra/*.tfstate.backup
 infra/.terraform.lock.hcl
