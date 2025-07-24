@@ -67,7 +67,7 @@ jobs:
           service:   mlflow-server
           image:     ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
           region:    ${{ secrets.GCP_REGION }}
-          project_id:${{ secrets.GCP_PROJECT }}
+          project_id: ${{ secrets.GCP_PROJECT }}
           env_vars: |
             ARTIFACT_BUCKET=${{ secrets.ARTIFACT_BUCKET }}
 
