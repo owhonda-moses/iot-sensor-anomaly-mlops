@@ -26,6 +26,7 @@ echo "Setting up pkg manager & dependencies…"
 pip install --upgrade pip >/dev/null 2>&1
 pip install poetry >/dev/null 2>&1
 poetry env use python3.11 >/dev/null 2>&1
+poetry add --group dev yamllint >/dev/null
 poetry install --no-interaction --no-ansi >/dev/null 2>&1
 
 # activate venv
@@ -67,7 +68,7 @@ git checkout main 2>/dev/null || git checkout -b main
 
 echo "Setup complete."
 
-git fetch origin main --depth=1
+# git fetch origin main --depth=1
 
 # commit changes
 if [ -n "$(git status --porcelain)" ]; then

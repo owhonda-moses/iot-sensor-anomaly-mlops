@@ -1,0 +1,15 @@
+# Version control
+.git
+.github/
+# Python caches
+__pycache__/
+*.pyc
+# Local env
+pat.env
+# Folders/files
+infra/
+data/
+iot_models/
+ipynb/
+README.md
+setup.sh

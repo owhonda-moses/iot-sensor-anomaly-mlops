@@ -5,6 +5,10 @@ source ./setup.sh
 curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user | grep login
 github-actions-sa@mlops-461322.iam.gserviceaccount.com
 
+mv .github github_temp
+mv github_temp .github
+
+
 
 sudo apt-get install apt-transport-https ca-certificates gnupg curl
 curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg

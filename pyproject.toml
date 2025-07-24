@@ -18,6 +18,9 @@ prefect = "^2.10.16"
 mlflow = "^3.1.1"
 tensorflow  = { version = "^2.19.0", extras = ["and-cuda"] }
 
+[tool.poetry.group.dev.dependencies]
+yamllint = "^1.37.1"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend  = "poetry.core.masonry.api"

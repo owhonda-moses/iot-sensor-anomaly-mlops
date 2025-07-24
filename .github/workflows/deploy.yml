@@ -37,21 +37,29 @@ jobs:
 
       - name: Build MLflow image
         run: |
-          docker build -t mlflow:latest docker/mlflow
+          docker build \
+            --file docker/mlflow/Dockerfile \
+            --tag mlflow:latest \
+            .
           docker tag mlflow:latest \
             ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
 
       - name: Push MLflow image
-        run: docker push ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
+        run: |
+          docker push ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
 
       - name: Build Prefect-Agent image
         run: |
-          docker build -t prefect-agent:latest docker/prefect-agent
+          docker build \
+            --file docker/prefect-agent/Dockerfile \
+            --tag prefect-agent:latest \
+            .
           docker tag prefect-agent:latest \
             ${{ needs.auth-setup.outputs.registry }}/prefect-agent:latest
 
       - name: Push Prefect-Agent image
-        run: docker push ${{ needs.auth-setup.outputs.registry }}/prefect-agent:latest
+        run: |
+          docker push ${{ needs.auth-setup.outputs.registry }}/prefect-agent:latest
 
   deploy-cloud-run:
     name: Deploy to Cloud Run
@@ -63,9 +71,9 @@ jobs:
       - name: Deploy MLflow Server
         uses: google-github-actions/deploy-cloudrun@v1
         with:
-          service:   mlflow-server
-          image:     ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
-          region:    ${{ secrets.GCP_REGION }}
+          service:    mlflow-server
+          image:      ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
+          region:     ${{ secrets.GCP_REGION }}
           project_id: ${{ secrets.GCP_PROJECT }}
           env_vars: |
             ARTIFACT_BUCKET=${{ secrets.ARTIFACT_BUCKET }}

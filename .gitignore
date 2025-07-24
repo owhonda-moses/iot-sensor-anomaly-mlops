@@ -43,6 +43,8 @@ venv.bak/
 .DS_Store
 Thumbs.db
 
+setup.md
+
 # Terraform local directory & state
 infra/.terraform/
 infra/gcp-sa-key.json
