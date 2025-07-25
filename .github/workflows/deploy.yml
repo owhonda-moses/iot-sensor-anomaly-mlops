@@ -11,12 +11,11 @@ permissions:
 
 jobs:
   auth-setup:
-    name: Authenticate gcloud & Set Registry Host
+    name: Authenticate with GCP
     runs-on: ubuntu-latest
-    outputs:
-      registry_host: ${{ steps.set-reg.outputs.registry_host }}
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Install Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
@@ -24,28 +23,26 @@ jobs:
           project_id:        ${{ secrets.GCP_PROJECT }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Configure Docker Auth
-        run: |
-          gcloud auth configure-docker europe-west2-docker.pkg.dev --quiet
-
-      - id: set-reg
-        name: Set registry host output
-        run: |
-          echo "registry_host=europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT }}" >> $GITHUB_OUTPUT
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker europe-west2-docker.pkg.dev --quiet
 
   build-and-push:
     name: Build & Push Images
     needs: auth-setup
     runs-on: ubuntu-latest
     env:
-      HOST: ${{ needs.auth-setup.outputs.registry_host }}
+      HOST: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT }}
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Debug registry host
+      - name: Debug HOST
         run: |
-          echo "HOST is set to »$HOST«"
-          test -n "$HOST" || ( echo "registry_host was empty!" && exit 1 )
+          echo "HOST is »$HOST«"
+          if [ -z "$HOST" ]; then
+            echo "❌ HOST is empty, aborting"
+            exit 1
+          fi
 
       - name: Build & Push mlflow
         run: |
@@ -67,15 +64,17 @@ jobs:
     name: Deploy to Cloud Run
     needs: build-and-push
     runs-on: ubuntu-latest
+    env:
+      HOST: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT }}
     steps:
       - name: Deploy MLflow Server
         uses: google-github-actions/deploy-cloudrun@v1
         with:
           service:             mlflow-server
-          image:               ${{ needs.auth-setup.outputs.registry_host }}/mlflow:latest
+          image:               $HOST/mlflow:latest
           region:              europe-west2
           project_id:          ${{ secrets.GCP_PROJECT }}
-          service_account:     github-actions-sa@mlops-461322.iam.gserviceaccount.com
+          service_account:     github-actions-sa@${{ secrets.GCP_PROJECT }}.iam.gserviceaccount.com
           vpc_connector:       vpc-connector
           cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:europe-west2:mlflow-pg
           env_vars: |
@@ -86,10 +85,10 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v1
         with:
           service:             prefect-agent
-          image:               ${{ needs.auth-setup.outputs.registry_host }}/prefect:latest
+          image:               $HOST/prefect:latest
           region:              europe-west2
           project_id:          ${{ secrets.GCP_PROJECT }}
-          service_account:     github-actions-sa@mlops-461322.iam.gserviceaccount.com
+          service_account:     github-actions-sa@${{ secrets.GCP_PROJECT }}.iam.gserviceaccount.com
           vpc_connector:       vpc-connector
           cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:europe-west2:mlflow-pg
           env_vars: |
