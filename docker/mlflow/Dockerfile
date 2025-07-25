@@ -10,14 +10,16 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Install dependencies + Cloud SQL driver
+# manifest and source code
 COPY pyproject.toml poetry.lock ./
+COPY src/ src/
+
 RUN poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi --without dev \
   && pip install psycopg2-binary
 
 # Copy source
-COPY src/ src/
+
 
 FROM python:3.11-slim
 

@@ -11,10 +11,11 @@ WORKDIR /app
 
 # Install dependencies
 COPY pyproject.toml poetry.lock ./
+COPY src/ src/
+
 RUN poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi --without-dev
 
-COPY src/ src/
 
 FROM python:3.11-slim
 WORKDIR /app
