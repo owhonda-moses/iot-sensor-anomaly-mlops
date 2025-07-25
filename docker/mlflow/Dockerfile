@@ -32,9 +32,5 @@ COPY . .
 EXPOSE 8080
 
 ENTRYPOINT ["mlflow", "server"]
-CMD [
-  "--host", "0.0.0.0",
-  "--port", "8080",
-  "--backend-store-uri", "$MLFLOW_TRACKING_URI",
-  "--default-artifact-root", "gs://${ARTIFACT_BUCKET}/mlruns"
-]
+CMD ["--host","0.0.0.0","--port","8080","--backend-store-uri","$MLFLOW_TRACKING_URI","--default-artifact-root","gs://${ARTIFACT_BUCKET}/mlruns"]
+
