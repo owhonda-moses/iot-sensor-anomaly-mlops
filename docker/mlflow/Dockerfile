@@ -13,7 +13,7 @@ WORKDIR /app
 # Install dependencies + Cloud SQL driver
 COPY pyproject.toml poetry.lock ./
 RUN poetry config virtualenvs.create false \
-  && poetry install --no-dev --no-interaction --no-ansi \
+  && poetry install --no-interaction --no-ansi --without dev \
   && pip install psycopg2-binary
 
 # Copy source
