@@ -1,3 +1,5 @@
+# .github/workflows/deploy.yml
+
 name: Build & Deploy
 
 on:
@@ -11,65 +13,67 @@ permissions:
 
 jobs:
   auth-setup:
-    name: Authenticate & Configure Docker
+    name: Install & Authenticate gcloud
     runs-on: ubuntu-latest
     outputs:
-      host: ${{ steps.set-host.outputs.host }}
+      registry_host: ${{ steps.set-reg.outputs.registry_host }}
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install gcloud SDK
+      - name: Install Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
-          project_id: ${{ secrets.GCP_PROJECT }}
+          project_id:       ${{ secrets.GCP_PROJECT }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Configure Docker for Artifact Registry
+      - name: Configure Docker auth
         run: |
           gcloud auth configure-docker \
-            ${{ secrets.GCP_REGION }}-docker.pkg.dev \
+            europe-west2-docker.pkg.dev \
             --quiet
 
-      - id: set-host
+      - id: set-reg
         name: Set registry host
         run: |
-          # This outputs: "host=us-central1-docker.pkg.dev/my-project"
-          echo "host=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}" \
+          echo "registry_host=europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT }}" \
             >> $GITHUB_OUTPUT
 
   build-and-push:
-    name: Build & Push Images
+    name: Build & Push Docker Images
     needs: auth-setup
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Show registry host (for debugging)
-        run: echo "Registry host is '${{ needs.auth-setup.outputs.host }}'"
-
-      - name: Build & Push mlflow
+      - name: Build & Push mlflow image
         run: |
-          HOST=${{ needs.auth-setup.outputs.host }}
+          HOST=${{ needs.auth-setup.outputs.registry_host }}
+          REPO=mlflow
+
           docker build \
             --file docker/mlflow/Dockerfile \
-            --tag mlflow:latest \
+            --tag ${REPO}:latest \
             .
-          docker tag mlflow:latest $HOST/mlflow:latest
-          docker push     $HOST/mlflow:latest
+          docker tag ${REPO}:latest \
+            $HOST/${REPO}:latest
+          docker push $HOST/${REPO}:latest
 
-      - name: Build & Push prefect
+      - name: Build & Push prefect image
         run: |
-          HOST=${{ needs.auth-setup.outputs.host }}
+          HOST=${{ needs.auth-setup.outputs.registry_host }}
+          REPO=prefect
+
           docker build \
             --file docker/prefect-agent/Dockerfile \
-            --tag prefect-agent:latest \
+            --tag ${REPO}:latest \
             .
-          docker tag prefect-agent:latest $HOST/prefect:latest
-          docker push     $HOST/prefect:latest
+          docker tag ${REPO}:latest \
+            $HOST/${REPO}:latest
+          docker push $HOST/${REPO}:latest
 
-  deploy:
+  deploy-cloud-run:
     name: Deploy to Cloud Run
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -77,27 +81,27 @@ jobs:
       - name: Deploy MLflow Server
         uses: google-github-actions/deploy-cloudrun@v1
         with:
-          service: mlflow-server
-          image: ${{ needs.auth-setup.outputs.host }}/mlflow:latest
-          region: ${{ secrets.GCP_REGION }}
-          project_id: ${{ secrets.GCP_PROJECT }}
-          service_account: github-actions-sa@mlops-461322.iam.gserviceaccount.com
-          vpc_connector: vpc-connector
-          cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
+          service:             mlflow-server
+          image:               ${{ needs.auth-setup.outputs.registry_host }}/mlflow:latest
+          region:              europe-west2
+          project_id:          ${{ secrets.GCP_PROJECT }}
+          service_account:     github-actions-sa@mlops-461322.iam.gserviceaccount.com
+          vpc_connector:       vpc-connector
+          cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:europe-west2:mlflow-pg
           env_vars: |
-            MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
+            MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${{ secrets.GCP_PROJECT }}:europe-west2:mlflow-pg
             ARTIFACT_BUCKET=${{ secrets.ARTIFACT_BUCKET }}
 
       - name: Deploy Prefect Agent
         uses: google-github-actions/deploy-cloudrun@v1
         with:
-          service: prefect-agent
-          image: ${{ needs.auth-setup.outputs.host }}/prefect:latest
-          region: ${{ secrets.GCP_REGION }}
-          project_id: ${{ secrets.GCP_PROJECT }}
-          service_account: github-actions-sa@mlops-461322.iam.gserviceaccount.com
-          vpc_connector: vpc-connector
-          cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
+          service:             prefect-agent
+          image:               ${{ needs.auth-setup.outputs.registry_host }}/prefect:latest
+          region:              europe-west2
+          project_id:          ${{ secrets.GCP_PROJECT }}
+          service_account:     github-actions-sa@mlops-461322.iam.gserviceaccount.com
+          vpc_connector:       vpc-connector
+          cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:europe-west2:mlflow-pg
           env_vars: |
-            PREFECT_ORION_UI_API_URL=https://mlflow-server-${{ secrets.GCP_REGION }}.run.app
-            PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
+            PREFECT_ORION_UI_API_URL=https://mlflow-server-europe-west2.run.app
+            PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/${{ secrets.GCP_PROJECT }}:europe-west2:mlflow-pg
