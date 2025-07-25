@@ -1,3 +1,9 @@
+# .github/workflows/deploy.yml
+
+permissions:
+  contents: read
+  id-token: write
+
 name: Build & Deploy
 
 on:
@@ -5,35 +11,42 @@ on:
     branches:
       - main
 
-jobs:
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
   auth-setup:
-    name: Authenticate to GCP
+    name: Authenticate to GCP & Expose Registry
     runs-on: ubuntu-latest
     outputs:
-      registry: ${{ steps.set-reg.outputs.artifact_registry }}
+      registry: ${{ steps.set-reg.outputs.registry }}
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Authenticate to GCP
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v1.21.1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Configure Docker
-        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+      - name: Configure Docker for Artifact Registry
+        uses: google-github-actions/configure-docker@v1.2.0
+        with:
+          registry: ${{ secrets.GCP_REGION }}-docker.pkg.dev
 
       - name: Expose registry URL
         id: set-reg
         run: |
-          echo "::set-output name=artifact_registry::${{ secrets.ARTIFACT_REGISTRY }}"
+          echo "registry=${{ secrets.ARTIFACT_REGISTRY }}" >> $GITHUB_OUTPUT
 
   build-and-push:
     name: Build & Push Images
     needs: auth-setup
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Build MLflow image
         run: |
@@ -66,24 +79,25 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Deploy MLflow Server
-        uses: google-github-actions/deploy-cloudrun@v1
+        uses: google-github-actions/deploy-cloudrun@v1.3.0
         with:
-          service:    mlflow-server
-          image:      ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
-          region:     ${{ secrets.GCP_REGION }}
+          service: mlflow-server
+          image: ${{ needs.auth-setup.outputs.registry }}/mlflow:latest
+          region: ${{ secrets.GCP_REGION }}
           project_id: ${{ secrets.GCP_PROJECT }}
           env_vars: |
             ARTIFACT_BUCKET=${{ secrets.ARTIFACT_BUCKET }}
 
       - name: Deploy Prefect Agent
-        uses: google-github-actions/deploy-cloudrun@v1
+        uses: google-github-actions/deploy-cloudrun@v1.3.0
         with:
-          service:    prefect-agent
-          image:      ${{ needs.auth-setup.outputs.registry }}/prefect-agent:latest
-          region:     ${{ secrets.GCP_REGION }}
+          service: prefect-agent
+          image: ${{ needs.auth-setup.outputs.registry }}/prefect-agent:latest
+          region: ${{ secrets.GCP_REGION }}
           project_id: ${{ secrets.GCP_PROJECT }}
           env_vars: |
             PREFECT_ORION_URL=https://mlflow-server-${{ secrets.GCP_REGION }}.run.app
