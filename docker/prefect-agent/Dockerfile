@@ -1,6 +1,6 @@
 FROM python:3.11-slim AS builder
 
-# system tools & poetry
+# Install poetry and build dependencies
 RUN apt-get update \
   && apt-get install -y --no-install-recommends curl build-essential git \
   && curl -sSL https://install.python-poetry.org | python3 - \
@@ -10,7 +10,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# install production dependencies
+# Install app dependencies
 COPY pyproject.toml poetry.lock ./
 COPY src/ src/
 RUN poetry config virtualenvs.create false \
@@ -20,16 +20,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# copy packages and app code
+# Copy installed packages and code
 COPY --from=builder /usr/local/lib/python3.11/site-packages/ \
                     /usr/local/lib/python3.11/site-packages/
 COPY --from=builder /usr/local/bin/ \
                     /usr/local/bin/
-
 COPY . .
 
+# expose port if agent metrics or health end up on HTTP
 EXPOSE 8080
 
-# start agent
-CMD ["bash","-lc", "\
-  prefect agent start -q default --orion api://${PREFECT_ORION_URL}"]
+CMD ["bash","-lc","prefect agent start -q default --orion api://${PREFECT_ORION_API_URL}"]

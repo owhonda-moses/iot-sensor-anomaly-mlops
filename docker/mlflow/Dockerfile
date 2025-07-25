@@ -1,6 +1,6 @@
 FROM python:3.11-slim AS builder
 
-# system tools & poetry
+# Install poetry and build dependencies
 RUN apt-get update \
   && apt-get install -y --no-install-recommends curl build-essential git \
   && curl -sSL https://install.python-poetry.org | python3 - \
@@ -10,30 +10,31 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# install production dependencies
+# Install app dependencies and Cloud SQL driver
 COPY pyproject.toml poetry.lock ./
 COPY src/ src/
 RUN poetry config virtualenvs.create false \
-  && poetry install --no-interaction --no-ansi --without dev
+  && poetry install --no-interaction --no-ansi --without dev \
+  && pip install psycopg2-binary
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# copy packages and app code
+# Copy installed packages and code
 COPY --from=builder /usr/local/lib/python3.11/site-packages/ \
                     /usr/local/lib/python3.11/site-packages/
 COPY --from=builder /usr/local/bin/ \
                     /usr/local/bin/
-
 COPY . .
 
-EXPOSE 5000 4200
+# Cloud Run default port
+EXPOSE 8080
 
-# run mlflow & launch prefect
-CMD ["bash", "-lc", "\
-  mlflow server \
-    --backend-store-uri sqlite:///mlflow.db \
-    --default-artifact-root gs://${ARTIFACT_BUCKET}/mlruns & \
-  prefect orion start --host 0.0.0.0 --port 4200\
-"]
+ENTRYPOINT ["mlflow", "server"]
+CMD [
+  "--host", "0.0.0.0",
+  "--port", "8080",
+  "--backend-store-uri", "$MLFLOW_TRACKING_URI",
+  "--default-artifact-root", "gs://${ARTIFACT_BUCKET}/mlruns"
+]
