@@ -1,6 +1,6 @@
 FROM python:3.11-slim AS builder
 
-# Install poetry and build dependencies
+# Install build tools & Poetry
 RUN apt-get update \
   && apt-get install -y --no-install-recommends curl build-essential git \
   && curl -sSL https://install.python-poetry.org | python3 - \
@@ -10,25 +10,29 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Install app dependencies and Cloud SQL driver
+# Install dependencies + Cloud SQL driver
 COPY pyproject.toml poetry.lock ./
-COPY src/ src/
 RUN poetry config virtualenvs.create false \
-  && poetry install --no-interaction --no-ansi --without dev \
+  && poetry install --no-dev --no-interaction --no-ansi \
   && pip install psycopg2-binary
+
+# Copy source
+COPY src/ src/
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy installed packages and code
+# Copy installed packages
 COPY --from=builder /usr/local/lib/python3.11/site-packages/ \
                     /usr/local/lib/python3.11/site-packages/
 COPY --from=builder /usr/local/bin/ \
                     /usr/local/bin/
+
+# Copy MLflow app code
 COPY . .
 
-# Cloud Run default port
+# Cloud Run 
 EXPOSE 8080
 
 ENTRYPOINT ["mlflow", "server"]

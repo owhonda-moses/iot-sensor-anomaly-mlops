@@ -11,75 +11,74 @@ permissions:
 
 jobs:
   auth-setup:
-    name: Install & Authenticate gcloud
+    name: Authenticate & Configure Docker
     runs-on: ubuntu-latest
     outputs:
-      registry_host: ${{ steps.set-reg.outputs.registry_host }}
+      host: ${{ steps.set-host.outputs.host }}
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install Cloud SDK
+      - name: Install gcloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ secrets.GCP_PROJECT }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Configure Docker auth
+      - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker \
             ${{ secrets.GCP_REGION }}-docker.pkg.dev \
             --quiet
 
-      - id: set-reg
-        name: Expose registry host
+      - id: set-host
+        name: Set registry host
         run: |
-          echo "registry_host=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}" \
+          # This outputs: "host=us-central1-docker.pkg.dev/my-project"
+          echo "host=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}" \
             >> $GITHUB_OUTPUT
 
   build-and-push:
-    name: Build & Push Docker Images
+    name: Build & Push Images
     needs: auth-setup
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Build & Push mlflow image
+      - name: Show registry host (for debugging)
+        run: echo "Registry host is '${{ needs.auth-setup.outputs.host }}'"
+
+      - name: Build & Push mlflow
         run: |
+          HOST=${{ needs.auth-setup.outputs.host }}
           docker build \
             --file docker/mlflow/Dockerfile \
             --tag mlflow:latest \
             .
-          docker tag mlflow:latest \
-            ${{ needs.auth-setup.outputs.registry_host }}/mlflow/mlflow:latest
-          docker push \
-            ${{ needs.auth-setup.outputs.registry_host }}/mlflow/mlflow:latest
+          docker tag mlflow:latest $HOST/mlflow:latest
+          docker push     $HOST/mlflow:latest
 
-      - name: Build & Push prefect-agent image
+      - name: Build & Push prefect
         run: |
+          HOST=${{ needs.auth-setup.outputs.host }}
           docker build \
             --file docker/prefect-agent/Dockerfile \
             --tag prefect-agent:latest \
             .
-          docker tag prefect-agent:latest \
-            ${{ needs.auth-setup.outputs.registry_host }}/prefect/prefect-agent:latest
-          docker push \
-            ${{ needs.auth-setup.outputs.registry_host }}/prefect/prefect-agent:latest
+          docker tag prefect-agent:latest $HOST/prefect:latest
+          docker push     $HOST/prefect:latest
 
-  deploy-cloud-run:
+  deploy:
     name: Deploy to Cloud Run
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
       - name: Deploy MLflow Server
         uses: google-github-actions/deploy-cloudrun@v1
         with:
           service: mlflow-server
-          image: ${{ needs.auth-setup.outputs.registry_host }}/mlflow/mlflow:latest
+          image: ${{ needs.auth-setup.outputs.host }}/mlflow:latest
           region: ${{ secrets.GCP_REGION }}
           project_id: ${{ secrets.GCP_PROJECT }}
           service_account: github-actions-sa@mlops-461322.iam.gserviceaccount.com
@@ -93,12 +92,12 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v1
         with:
           service: prefect-agent
-          image: ${{ needs.auth-setup.outputs.registry_host }}/prefect/prefect-agent:latest
+          image: ${{ needs.auth-setup.outputs.host }}/prefect:latest
           region: ${{ secrets.GCP_REGION }}
           project_id: ${{ secrets.GCP_PROJECT }}
           service_account: github-actions-sa@mlops-461322.iam.gserviceaccount.com
           vpc_connector: vpc-connector
           cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
           env_vars: |
-            PREFECT_ORION_API_URL=https://mlflow-server-${{ secrets.GCP_REGION }}.run.app
+            PREFECT_ORION_UI_API_URL=https://mlflow-server-${{ secrets.GCP_REGION }}.run.app
             PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
