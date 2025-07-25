@@ -1,11 +1,9 @@
-# .github/workflows/deploy.yml
 
 name: Build & Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: read
@@ -13,65 +11,57 @@ permissions:
 
 jobs:
   auth-setup:
-    name: Install & Authenticate gcloud
+    name: Authenticate gcloud & Set Registry Host
     runs-on: ubuntu-latest
     outputs:
       registry_host: ${{ steps.set-reg.outputs.registry_host }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Install Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
-          project_id:       ${{ secrets.GCP_PROJECT }}
+          project_id:        ${{ secrets.GCP_PROJECT }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Configure Docker auth
+      - name: Configure Docker Auth
         run: |
-          gcloud auth configure-docker \
-            europe-west2-docker.pkg.dev \
-            --quiet
+          gcloud auth configure-docker europe-west2-docker.pkg.dev --quiet
 
       - id: set-reg
-        name: Set registry host
+        name: Set registry host output
         run: |
-          echo "registry_host=europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT }}" \
-            >> $GITHUB_OUTPUT
+          echo "registry_host=europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT }}" >> $GITHUB_OUTPUT
 
   build-and-push:
-    name: Build & Push Docker Images
+    name: Build & Push Images
     needs: auth-setup
     runs-on: ubuntu-latest
+    env:
+      HOST: ${{ needs.auth-setup.outputs.registry_host }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Build & Push mlflow image
+      - name: Debug registry host
         run: |
-          HOST=${{ needs.auth-setup.outputs.registry_host }}
-          REPO=mlflow
+          echo "HOST is set to »$HOST«"
+          test -n "$HOST" || ( echo "registry_host was empty!" && exit 1 )
 
+      - name: Build & Push mlflow
+        run: |
           docker build \
             --file docker/mlflow/Dockerfile \
-            --tag ${REPO}:latest \
+            --tag $HOST/mlflow:latest \
             .
-          docker tag ${REPO}:latest \
-            $HOST/${REPO}:latest
-          docker push $HOST/${REPO}:latest
+          docker push $HOST/mlflow:latest
 
-      - name: Build & Push prefect image
+      - name: Build & Push prefect
         run: |
-          HOST=${{ needs.auth-setup.outputs.registry_host }}
-          REPO=prefect
-
           docker build \
             --file docker/prefect-agent/Dockerfile \
-            --tag ${REPO}:latest \
+            --tag $HOST/prefect:latest \
             .
-          docker tag ${REPO}:latest \
-            $HOST/${REPO}:latest
-          docker push $HOST/${REPO}:latest
+          docker push $HOST/prefect:latest
 
   deploy-cloud-run:
     name: Deploy to Cloud Run
