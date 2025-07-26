@@ -1,0 +1,24 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '$REGION-docker.pkg.dev/$PROJECT/$REPO/mlflow'
+      - '-f'
+      - 'docker/mlflow/Dockerfile'
+      - '.'
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '$REGION-docker.pkg.dev/$PROJECT/$REPO/prefect'
+      - '-f'
+      - 'docker/prefect-agent/Dockerfile'
+      - '.'
+images:
+  - '$REGION-docker.pkg.dev/$PROJECT/$REPO/mlflow'
+  - '$REGION-docker.pkg.dev/$PROJECT/$REPO/prefect'
+substitutions:
+  _REGION: '${{ env.GCP_REGION }}'
+  _PROJECT: '${{ env.GCP_PROJECT }}'
+  _REPO: '${{ env.ARTIFACT_REPO }}'

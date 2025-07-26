@@ -18,7 +18,7 @@ permissions:
 env:
   GCP_PROJECT:     ${{ secrets.GCP_PROJECT }}
   GCP_REGION:      ${{ secrets.GCP_REGION }}
-  ARTIFACT_REPO:   mlflow
+  ARTIFACT_REPO:   mlops-docker
   ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
   DB_INSTANCE:     ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
 
@@ -37,12 +37,9 @@ jobs:
 
       - name: Build & Push Images
         run: |
-          gcloud builds submit . \
-            --tag $GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$ARTIFACT_REPO/mlflow \
-            --dockerfile=docker/mlflow/Dockerfile
-          gcloud builds submit . \
-            --tag $GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$ARTIFACT_REPO/prefect \
-            --dockerfile=docker/prefect-agent/Dockerfile
+            gcloud builds submit . \
+          --config cloudbuild.yaml \
+          --substitutions=_REGION=$GCP_REGION,_PROJECT=$GCP_PROJECT,_REPO=$ARTIFACT_REPO
 
       - name: Deploy MLflow Server
         run: |
