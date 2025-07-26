@@ -39,6 +39,8 @@ COPY --from=builder /app/src/ ./src/
 # Cloud Run 
 EXPOSE 8080
 
+ENV PYTHONPATH="${PYTHONPATH}:/app/src"
+
 ENTRYPOINT ["mlflow", "server"]
 CMD ["--host","0.0.0.0","--port","8080","--backend-store-uri","$MLFLOW_TRACKING_URI","--default-artifact-root","gs://${ARTIFACT_BUCKET}/mlruns"]
 

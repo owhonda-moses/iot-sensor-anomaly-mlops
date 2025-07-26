@@ -39,5 +39,7 @@ COPY --from=builder /app/src/ ./src/
 # expose if agent health or metrics is served
 EXPOSE 8080
 
+ENV PYTHONPATH="${PYTHONPATH}:/app/src"
+
 ENTRYPOINT ["bash", "-lc"]
 CMD ["prefect agent start -q default --orion api://${PREFECT_ORION_UI_API_URL}"]

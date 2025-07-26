@@ -3,6 +3,7 @@ name  = "iot-anomaly"
 version = "0.1.0"
 description = "Anomaly detection for sensor data"
 authors = ["owhondamoses7@gmail.com"]
+
 packages = [
   { include = "iot_anomaly", from = "src" }
 ]
