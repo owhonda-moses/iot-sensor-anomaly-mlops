@@ -1,38 +1,40 @@
 FROM python:3.11-slim AS builder
 
-# Install build tools & Poetry
+# install system deps & Poetry
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl build-essential git \
-  && curl -sSL https://install.python-poetry.org | python3 - \
-  && mv /root/.local/bin/poetry /usr/local/bin/poetry \
-  && apt-get purge -y --auto-remove curl build-essential git \
-  && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y --no-install-recommends curl build-essential git \
+ && curl -sSL https://install.python-poetry.org | python3 - \
+ && mv /root/.local/bin/poetry /usr/local/bin/poetry \
+ && apt-get purge -y --auto-remove curl build-essential git \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# manifest and source code
+# bring in dependency specs
 COPY pyproject.toml poetry.lock ./
-COPY src/ src/
 
-RUN poetry config virtualenvs.create false \
-  && poetry install --no-interaction --no-ansi --without dev \
-  && pip install psycopg2-binary
+# install Python deps
+RUN pip install --upgrade pip \
+ && poetry config virtualenvs.create false \
+ && poetry install --no-interaction --no-ansi --without dev \
+ && pip install psycopg2-binary
 
-# Copy source
+# copy app code  
+COPY src/ ./src/
 
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy installed packages
+# copy installed packages & executables
 COPY --from=builder /usr/local/lib/python3.11/site-packages/ \
                     /usr/local/lib/python3.11/site-packages/
 COPY --from=builder /usr/local/bin/ \
                     /usr/local/bin/
 
-# Copy MLflow app code
-COPY . .
+# copy app code
+COPY --from=builder /app/src/ ./src/
 
 # Cloud Run 
 EXPOSE 8080

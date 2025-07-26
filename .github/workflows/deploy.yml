@@ -8,16 +8,19 @@ on:
       - 'src/**'
       - '.github/workflows/deploy.yml'
   workflow_run:
-    workflows: ["Terraform"]
-    types:
-      - completed
-  # workflow_dispatch: {}
+    workflows: [ 'Terraform' ]
+    types: [ completed ]
+    
+permissions:
+  contents: read
+  id-token: write
 
 env:
-  GCP_PROJECT:   ${{ secrets.GCP_PROJECT }}
-  GCP_REGION:    ${{ secrets.GCP_REGION }}
-  ARTIFACT_REPO: mlops-docker
-  DB_INSTANCE:   ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
+  GCP_PROJECT:     ${{ secrets.GCP_PROJECT }}
+  GCP_REGION:      ${{ secrets.GCP_REGION }}
+  ARTIFACT_REPO:   mlflow
+  ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
+  DB_INSTANCE:     ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
 
 jobs:
   deploy:
@@ -34,10 +37,12 @@ jobs:
 
       - name: Build & Push Images
         run: |
-          gcloud builds submit docker/mlflow \
-            --tag $GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$ARTIFACT_REPO/mlflow
-          gcloud builds submit docker/prefect \
-            --tag $GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$ARTIFACT_REPO/prefect
+          gcloud builds submit . \
+            --tag $GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$ARTIFACT_REPO/mlflow \
+            --dockerfile=docker/mlflow/Dockerfile
+          gcloud builds submit . \
+            --tag $GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$ARTIFACT_REPO/prefect \
+            --dockerfile=docker/prefect-agent/Dockerfile
 
       - name: Deploy MLflow Server
         run: |
@@ -47,7 +52,7 @@ jobs:
             --platform managed \
             --vpc-connector mlops-vpc \
             --add-cloudsql-instances $DB_INSTANCE \
-            --set-env-vars="MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/$DB_INSTANCE,ARTIFACT_BUCKET=${{ secrets.ARTIFACT_BUCKET }}"
+            --set-env-vars "MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/$DB_INSTANCE,ARTIFACT_BUCKET=$ARTIFACT_BUCKET"
 
       - name: Deploy Prefect Agent
         run: |
@@ -57,5 +62,4 @@ jobs:
             --platform managed \
             --vpc-connector mlops-vpc \
             --add-cloudsql-instances $DB_INSTANCE \
-            --set-env-vars="PREFECT_ORION_UI_API_URL=https://mlflow-server-$GCP_REGION.run.app,PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/$DB_INSTANCE"
-            
+            --set-env-vars "PREFECT_ORION_UI_API_URL=https://mlflow-server-$GCP_REGION.run.app,PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/$DB_INSTANCE"
