@@ -20,7 +20,7 @@ env:
   GCP_REGION:      ${{ secrets.GCP_REGION }}
   ARTIFACT_REPO:   mlops-docker
   ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
-  DB_INSTANCE:     ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
+  DB_INSTANCE:     "${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg"
 
 jobs:
   deploy:
