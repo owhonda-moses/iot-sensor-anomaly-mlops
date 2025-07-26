@@ -1,4 +1,3 @@
-
 name: Build & Deploy
 
 on:
@@ -24,15 +23,15 @@ jobs:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Setup gcloud CLI
-        uses: google-github-actions/setup-gcloud@v1
+        uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT }}
 
       - name: Start Cloud SQL Auth Proxy
-        uses: google-github-actions/cloud-sql-proxy@v2.18.0
+        uses: mattes/gce-cloudsql-proxy-action@v1
         with:
-          credentials: ${{ secrets.GCP_SA_KEY }}
-          instances:   ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
+          creds: ${{ secrets.GCP_SA_KEY }}
+          instance: ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
 
       - name: Grant DB privileges to mlflow_user & prefect_user
         env:
