@@ -33,7 +33,7 @@ resource "google_storage_bucket" "artifacts" {
 resource "google_artifact_registry_repository" "docker_repo" {
   provider = google
   location = var.region
-  repository_id = "mlflow"
+  repository_id = "mlops-docker"
   format = "DOCKER"
 }
 
