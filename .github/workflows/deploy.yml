@@ -1,4 +1,3 @@
-# .github/workflows/deploy.yml
 name: Deploy
 
 on:
@@ -42,25 +41,25 @@ jobs:
       - name: Build & Push Images
         run: |
           gcloud builds submit . \
-            --config cloudbuild.yaml \
-            --substitutions=_REGION=$GCP_REGION,_PROJECT=$GCP_PROJECT,_REPO=$ARTIFACT_REPO
+            --config=cloudbuild.yaml \
+            --substitutions=_REGION=${GCP_REGION},_PROJECT=${GCP_PROJECT},_REPO=${ARTIFACT_REPO}
 
       - name: Deploy MLflow Server
         run: |
           gcloud run deploy mlflow-server \
-            --image $GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$ARTIFACT_REPO/mlflow \
-            --region $GCP_REGION \
+            --image ${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/${ARTIFACT_REPO}/mlflow \
+            --region ${GCP_REGION} \
             --platform managed \
             --vpc-connector mlops-vpc \
-            --add-cloudsql-instances $DB_INSTANCE \
-            --set-env-vars "MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/$DB_INSTANCE,ARTIFACT_BUCKET=$ARTIFACT_BUCKET"
+            --add-cloudsql-instances ${DB_INSTANCE} \
+            --set-env-vars "MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${DB_INSTANCE},ARTIFACT_BUCKET=${ARTIFACT_BUCKET}"
 
       - name: Deploy Prefect Agent
         run: |
           gcloud run deploy prefect-agent \
-            --image $GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$ARTIFACT_REPO/prefect \
-            --region $GCP_REGION \
+            --image ${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/${ARTIFACT_REPO}/prefect \
+            --region ${GCP_REGION} \
             --platform managed \
             --vpc-connector mlops-vpc \
-            --add-cloudsql-instances $DB_INSTANCE \
-            --set-env-vars "PREFECT_ORION_UI_API_URL=https://mlflow-server-$GCP_REGION.run.app,PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/$DB_INSTANCE"
+            --add-cloudsql-instances ${DB_INSTANCE} \
+            --set-env-vars "PREFECT_ORION_UI_API_URL=https://mlflow-server-${GCP_REGION}.run.app,PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/${DB_INSTANCE}"
