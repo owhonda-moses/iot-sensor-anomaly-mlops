@@ -41,9 +41,7 @@ jobs:
             --platform managed \
             --vpc-connector mlops-vpc \
             --add-cloudsql-instances $DB_INSTANCE \
-            --set-env-vars=\
-MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/$DB_INSTANCE,\
-ARTIFACT_BUCKET=${{ secrets.ARTIFACT_BUCKET }}
+            --set-env-vars="MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/$DB_INSTANCE,ARTIFACT_BUCKET=${{ secrets.ARTIFACT_BUCKET }}"
 
       - name: Deploy Prefect Agent
         run: |
@@ -53,6 +51,5 @@ ARTIFACT_BUCKET=${{ secrets.ARTIFACT_BUCKET }}
             --platform managed \
             --vpc-connector mlops-vpc \
             --add-cloudsql-instances $DB_INSTANCE \
-            --set-env-vars=\
-PREFECT_ORION_UI_API_URL=https://mlflow-server-$GCP_REGION.run.app,\
-PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/$DB_INSTANCE
+            --set-env-vars="PREFECT_ORION_UI_API_URL=https://mlflow-server-$GCP_REGION.run.app,PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/$DB_INSTANCE"
+            
