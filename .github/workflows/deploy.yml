@@ -27,15 +27,34 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT }}
 
+      - name: Grant DB privileges to mlflow_user & prefect_user
+        env:
+          CLOUDSDK_CORE_PROJECT: ${{ secrets.GCP_PROJECT }}
+        run: |
+          gcloud sql connect mlflow-pg --user=postgres --quiet <<EOF
+          -- mlflow_user on mlflow_db
+          GRANT CONNECT ON DATABASE mlflow_db TO mlflow_user;
+          \c mlflow_db
+          GRANT USAGE ON SCHEMA public TO mlflow_user;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO mlflow_user;
+
+          -- prefect_user on prefect_db
+          GRANT CONNECT ON DATABASE prefect_db TO prefect_user;
+          \c prefect_db
+          GRANT USAGE ON SCHEMA public TO prefect_user;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO prefect_user;
+          EOF
+
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
       - name: Build & Push mlflow
         run: |
           docker build \
             --file docker/mlflow/Dockerfile \
             --tag ${{ secrets.ARTIFACT_REGISTRY }}/mlflow:latest \
-            .
+            docker/mlflow
           docker push ${{ secrets.ARTIFACT_REGISTRY }}/mlflow:latest
 
       - name: Build & Push prefect
@@ -43,7 +62,7 @@ jobs:
           docker build \
             --file docker/prefect-agent/Dockerfile \
             --tag ${{ secrets.ARTIFACT_REGISTRY }}/prefect:latest \
-            .
+            docker/prefect-agent
           docker push ${{ secrets.ARTIFACT_REGISTRY }}/prefect:latest
 
       - name: Deploy MLflow Server to Cloud Run
@@ -55,9 +74,9 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT }}
           service_account: github-actions-sa@${{ secrets.GCP_PROJECT }}.iam.gserviceaccount.com
           vpc_connector: vpc-connector
-          cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:europe-west2:mlflow-pg
+          cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
           env_vars: |
-            MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${{ secrets.GCP_PROJECT }}:europe-west2:mlflow-pg
+            MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
             ARTIFACT_BUCKET=${{ secrets.ARTIFACT_BUCKET }}
 
       - name: Deploy Prefect Agent to Cloud Run
@@ -69,7 +88,7 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT }}
           service_account: github-actions-sa@${{ secrets.GCP_PROJECT }}.iam.gserviceaccount.com
           vpc_connector: vpc-connector
-          cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:europe-west2:mlflow-pg
+          cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
           env_vars: |
-            PREFECT_ORION_UI_API_URL=https://mlflow-server-europe-west2.run.app
-            PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/${{ secrets.GCP_PROJECT }}:europe-west2:mlflow-pg
+            PREFECT_ORION_UI_API_URL=https://mlflow-server-${{ secrets.GCP_REGION }}.run.app
+            PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
