@@ -1,3 +1,4 @@
+
 name: Build & Deploy
 
 on:
@@ -14,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Authenticate to GCP
@@ -27,23 +28,29 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT }}
 
+      - name: Start Cloud SQL Auth Proxy
+        uses: google-github-actions/cloud-sql-proxy@v1
+        with:
+          credentials: ${{ secrets.GCP_SA_KEY }}
+          instances:   ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
+
       - name: Grant DB privileges to mlflow_user & prefect_user
         env:
-          CLOUDSDK_CORE_PROJECT: ${{ secrets.GCP_PROJECT }}
+          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
-          gcloud sql connect mlflow-pg --user=postgres --quiet <<EOF
-          -- mlflow_user on mlflow_db
-          GRANT CONNECT ON DATABASE mlflow_db TO mlflow_user;
-          \c mlflow_db
-          GRANT USAGE ON SCHEMA public TO mlflow_user;
-          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO mlflow_user;
+          # mlflow_user on mlflow_db
+          psql -h 127.0.0.1 -U postgres -c "GRANT CONNECT ON DATABASE mlflow_db TO mlflow_user;"
+          psql -h 127.0.0.1 -U postgres -d mlflow_db \
+            -c "GRANT USAGE ON SCHEMA public TO mlflow_user;"
+          psql -h 127.0.0.1 -U postgres -d mlflow_db \
+            -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO mlflow_user;"
 
-          -- prefect_user on prefect_db
-          GRANT CONNECT ON DATABASE prefect_db TO prefect_user;
-          \c prefect_db
-          GRANT USAGE ON SCHEMA public TO prefect_user;
-          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO prefect_user;
-          EOF
+          # prefect_user on prefect_db
+          psql -h 127.0.0.1 -U postgres -c "GRANT CONNECT ON DATABASE prefect_db TO prefect_user;"
+          psql -h 127.0.0.1 -U postgres -d prefect_db \
+            -c "GRANT USAGE ON SCHEMA public TO prefect_user;"
+          psql -h 127.0.0.1 -U postgres -d prefect_db \
+            -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO prefect_user;"
 
       - name: Configure Docker for Artifact Registry
         run: |
@@ -68,12 +75,12 @@ jobs:
       - name: Deploy MLflow Server to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v1
         with:
-          service: mlflow-server
-          image: ${{ secrets.ARTIFACT_REGISTRY }}/mlflow:latest
-          region: ${{ secrets.GCP_REGION }}
-          project_id: ${{ secrets.GCP_PROJECT }}
-          service_account: github-actions-sa@${{ secrets.GCP_PROJECT }}.iam.gserviceaccount.com
-          vpc_connector: vpc-connector
+          service:             mlflow-server
+          image:               ${{ secrets.ARTIFACT_REGISTRY }}/mlflow:latest
+          region:              ${{ secrets.GCP_REGION }}
+          project_id:          ${{ secrets.GCP_PROJECT }}
+          service_account:     github-actions-sa@${{ secrets.GCP_PROJECT }}.iam.gserviceaccount.com
+          vpc_connector:       vpc-connector
           cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
           env_vars: |
             MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
@@ -82,12 +89,12 @@ jobs:
       - name: Deploy Prefect Agent to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v1
         with:
-          service: prefect-agent
-          image: ${{ secrets.ARTIFACT_REGISTRY }}/prefect:latest
-          region: ${{ secrets.GCP_REGION }}
-          project_id: ${{ secrets.GCP_PROJECT }}
-          service_account: github-actions-sa@${{ secrets.GCP_PROJECT }}.iam.gserviceaccount.com
-          vpc_connector: vpc-connector
+          service:             prefect-agent
+          image:               ${{ secrets.ARTIFACT_REGISTRY }}/prefect:latest
+          region:              ${{ secrets.GCP_REGION }}
+          project_id:          ${{ secrets.GCP_PROJECT }}
+          service_account:     github-actions-sa@${{ secrets.GCP_PROJECT }}.iam.gserviceaccount.com
+          vpc_connector:       vpc-connector
           cloud_sql_instances: ${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg
           env_vars: |
             PREFECT_ORION_UI_API_URL=https://mlflow-server-${{ secrets.GCP_REGION }}.run.app
