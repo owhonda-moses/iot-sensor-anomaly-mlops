@@ -44,6 +44,7 @@ venv.bak/
 Thumbs.db
 
 setup.md
+gcp_build.txt
 
 # Terraform local directory & state
 infra/.terraform/

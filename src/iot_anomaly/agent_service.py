@@ -3,7 +3,7 @@ import os
 from flask import Flask, jsonify
 
 # start prefect agent as a background process to poll for new flow runs
-subprocess.Popen(["prefect", "agent", "start", "-q", "default"])
+subprocess.Popen(["prefect", "agent", "start", "-p", "default-agent-pool"])
 
 
 app = Flask(__name__)

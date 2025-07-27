@@ -1,0 +1,58 @@
+###
+### A complete description of a Prefect Deployment for flow 'iot_training_pipeline'
+###
+name: IoT Training Deployment
+description: null
+version: 1884267987cbb1ad95b023170f99d087
+# The work queue that will handle this deployment's runs
+work_queue_name: default
+work_pool_name: null
+tags: []
+parameters: {}
+schedule: null
+schedules: []
+is_schedule_active: null
+infra_overrides: {}
+infrastructure:
+  type: process
+  env: {}
+  labels: {}
+  name: null
+  command: null
+  stream_output: true
+  working_dir: null
+  block_type_slug: process
+  _block_type_slug: process
+
+###
+### DO NOT EDIT BELOW THIS LINE
+###
+flow_name: iot_training_pipeline
+manifest_path: null
+storage: null
+path: /notebooks/iot-mlops
+entrypoint: src/iot_anomaly/pipeline.py:iot_training_pipeline
+parameter_openapi_schema:
+  title: Parameters
+  type: object
+  properties:
+    run_usl:
+      default: true
+      position: 0
+      title: run_usl
+      type: boolean
+    run_sl:
+      default: true
+      position: 1
+      title: run_sl
+      type: boolean
+    dry_run:
+      default: false
+      position: 2
+      title: dry_run
+      type: boolean
+  required: null
+  definitions: null
+timestamp: '2025-07-27T02:37:49.844016+00:00'
+triggers: []
+enforce_parameter_schema: null

@@ -10,6 +10,10 @@ mv github_temp .github #rehide
 
 source "$(poetry env info --path)/bin/activate"
 
+prefect deployment build src/iot_anomaly/pipeline.py:iot_training_pipeline --name "IoT Training Deployment" --output iot-deployment.yaml
+prefect deployment apply iot-deployment.yaml
+
+prefect deployment run 'iot_training_pipeline/IoT Training Deployment'
 
 sudo apt-get install apt-transport-https ca-certificates gnupg curl
 curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
