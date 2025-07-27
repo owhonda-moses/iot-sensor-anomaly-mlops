@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'docker/**'
+      - 'Dockerfile'
       - 'src/**'
       - '.github/workflows/deploy.yml'
   workflow_run:
@@ -80,8 +80,8 @@ jobs:
             --image ${IMAGE_URI} \
             --region ${GCP_REGION} \
             --platform managed \
-            --command="prefect" \
-            --args="agent,start,-q,default" \
+            --command="python" \
+            --args="-m,iot_anomaly.agent_service" \
             --set-env-vars="PREFECT_API_URL=${{ secrets.PREFECT_API_URL }}" \
             --set-env-vars="PREFECT_API_KEY=${{ secrets.PREFECT_API_KEY }}" \
             --set-env-vars="MLFLOW_TRACKING_URI=${{ env.MLFLOW_TRACKING_URI }}" \
