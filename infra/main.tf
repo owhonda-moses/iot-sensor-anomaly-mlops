@@ -64,16 +64,9 @@ resource "google_project_iam_member" "run_admin" {
   member  = "serviceAccount:${local.sa_email}"
 }
 
-# (Optional) If you’ll deploy to GKE:
-# resource "google_project_iam_member" "container_admin" { … }
-
-output "sa_key_file" {
-  value = var.credentials_file
-}
 output "artifact_registry" {
   value = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker_repo.repository_id}"
 }
 output "bucket_name" {
   value = google_storage_bucket.artifacts.name
 }
-

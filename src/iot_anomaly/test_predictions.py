@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 
-#!/usr/bin/env python
-
 import argparse
 import pandas as pd
 
 from iot_anomaly.predict import predict_iot
 
-# numeric shortcuts for your three MACs
+# numeric shortcuts for MACs
 DEVICES = [
     "00:0f:00:70:91:0a",
     "1c:bf:ce:15:ec:4d",

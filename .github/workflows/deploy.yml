@@ -2,17 +2,14 @@ name: Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
     paths:
       - 'docker/**'
       - 'src/**'
       - '.github/workflows/deploy.yml'
   workflow_run:
-    workflows:
-      - 'Terraform'
-    types:
-      - completed
+    workflows: ["Terraform"]
+    types: ["completed"]
 
 permissions:
   contents: read
@@ -22,44 +19,70 @@ env:
   GCP_PROJECT:     ${{ secrets.GCP_PROJECT }}
   GCP_REGION:      ${{ secrets.GCP_REGION }}
   ARTIFACT_REPO:   mlops-docker
-  ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
+  IMAGE_NAME:      mlops-app
   DB_INSTANCE:     "${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg"
+  ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Authenticate to GCP
+      - name: GCP Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Build & Push Images
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - name: Build & Push Docker Image
         run: |
-          gcloud builds submit . \
-            --config=cloudbuild.yaml \
-            --substitutions=_REGION=${GCP_REGION},_PROJECT=${GCP_PROJECT},_REPO=${ARTIFACT_REPO}
+          IMAGE_URI="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest"
+          gcloud builds submit . --tag ${IMAGE_URI}
 
       - name: Deploy MLflow Server
         run: |
+          IMAGE_URI="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest"
           gcloud run deploy mlflow-server \
-            --image ${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/${ARTIFACT_REPO}/mlflow \
+            --image ${IMAGE_URI} \
             --region ${GCP_REGION} \
             --platform managed \
             --vpc-connector mlops-vpc \
             --add-cloudsql-instances ${DB_INSTANCE} \
-            --set-env-vars "MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${DB_INSTANCE},ARTIFACT_BUCKET=${ARTIFACT_BUCKET}"
+            --set-env-vars="MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${DB_INSTANCE}" \
+            --set-env-vars="ARTIFACT_BUCKET=${ARTIFACT_BUCKET}" \
+            --command="mlflow" \
+            --args="server,--host,0.0.0.0,--port,8080,--backend-store-uri,$(MLFLOW_TRACKING_URI),--default-artifact-root,gs://$(ARTIFACT_BUCKET)/mlflow"
+
+      - name: Get MLflow Server URL
+        id: get_url
+        run: |
+          URL=$(gcloud run services describe mlflow-server --platform managed --region ${{ env.GCP_REGION }} --format 'value(status.url)')
+          echo "MLFLOW_TRACKING_URI=${URL}" >> $GITHUB_ENV
+
+      - name: Deploy Prediction Service
+        run: |
+          IMAGE_URI="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest"
+          gcloud run deploy prediction-service \
+            --image ${IMAGE_URI} \
+            --region ${GCP_REGION} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars="MLFLOW_TRACKING_URI=${{ env.MLFLOW_TRACKING_URI }}"
 
       - name: Deploy Prefect Agent
         run: |
+          IMAGE_URI="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest"
           gcloud run deploy prefect-agent \
-            --image ${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/${ARTIFACT_REPO}/prefect \
+            --image ${IMAGE_URI} \
             --region ${GCP_REGION} \
             --platform managed \
-            --vpc-connector mlops-vpc \
-            --add-cloudsql-instances ${DB_INSTANCE} \
-            --set-env-vars "PREFECT_ORION_UI_API_URL=https://mlflow-server-${GCP_REGION}.run.app,PREFECT_ORION_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect_user:${{ secrets.PREFECT_PASSWORD }}@/prefect_db?host=/cloudsql/${DB_INSTANCE}"
+            --command="prefect" \
+            --args="agent,start,-q,default" \
+            --set-env-vars="PREFECT_API_URL=${{ secrets.PREFECT_API_URL }}" \
+            --set-env-vars="PREFECT_API_KEY=${{ secrets.PREFECT_API_KEY }}" \
+            --set-env-vars="MLFLOW_TRACKING_URI=${{ env.MLFLOW_TRACKING_URI }}" \
+            --set-env-vars="ARTIFACT_BUCKET=${{ env.ARTIFACT_BUCKET }}"

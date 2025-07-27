@@ -5,7 +5,3 @@ variable "project_id" {
 variable "region" {
   description = "GCP region"
 }
-
-variable "credentials_file" {
-  description = "Service account JSON key"
-}
