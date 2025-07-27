@@ -55,7 +55,7 @@ jobs:
             --set-env-vars="MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${DB_INSTANCE}" \
             --set-env-vars="ARTIFACT_BUCKET=${ARTIFACT_BUCKET}" \
             --command="mlflow" \
-            --args="server,--host,0.0.0.0,--port,8080,--backend-store-uri,$(MLFLOW_TRACKING_URI),--default-artifact-root,gs://$(ARTIFACT_BUCKET)/mlflow"
+            --args="server,--host,0.0.0.0,--port,8080,--backend-store-uri,\$MLFLOW_TRACKING_URI,--default-artifact-root,gs://\$ARTIFACT_BUCKET/mlflow"
 
       - name: Get MLflow Server URL
         id: get_url
