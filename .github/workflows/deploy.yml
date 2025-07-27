@@ -7,6 +7,7 @@ on:
       - 'Dockerfile'
       - 'src/**'
       - '.github/workflows/deploy.yml'
+      - 'requirements.txt'
   workflow_run:
     workflows: ["Terraform"]
     types: ["completed"]
