@@ -10,8 +10,7 @@ mv github_temp .github #rehide
 
 source "$(poetry env info --path)/bin/activate"
 
-prefect deployment build src/iot_anomaly/pipeline.py:iot_training_pipeline --name "IoT Training Deployment" --output iot-deployment.yaml
-prefect deployment apply iot-deployment.yaml
+pip install prefect-github prefect==2.11.5 --no-deps
 
 prefect deployment run 'iot_training_pipeline/IoT Training Deployment'
 
@@ -99,50 +98,20 @@ echo "Dependencies installed."
 
 
 
-# FROM python:3.11-slim AS builder
-
-# # install system deps & Poetry
-# RUN apt-get update \
-#  && apt-get install -y --no-install-recommends curl build-essential git \
-#  && curl -sSL https://install.python-poetry.org | python3 - \
-#  && mv /root/.local/bin/poetry /usr/local/bin/poetry \
-#  && apt-get purge -y --auto-remove curl build-essential git \
-#  && rm -rf /var/lib/apt/lists/*
-
-# WORKDIR /app
-
-# # bring in dependency specs
-# COPY pyproject.toml poetry.lock ./
-
-# # install Python deps
-# RUN pip install --upgrade pip \
-#  && poetry config virtualenvs.create false \
-#  && poetry install --no-interaction --no-ansi --without dev \
-#  && pip install psycopg2-binary
-
-# # copy app code  
-# COPY src/ ./src/
-
-
-# FROM python:3.11-slim
-
-# WORKDIR /app
-
-# # copy installed packages & executables
-# COPY --from=builder /usr/local/lib/python3.11/site-packages/ \
-#                     /usr/local/lib/python3.11/site-packages/
-# COPY --from=builder /usr/local/bin/ \
-#                     /usr/local/bin/
-
-# # copy app code
-# COPY --from=builder /app/src/ ./src/
-
-# # Cloud Run 
-# EXPOSE 8080
-
-# ENV PYTHONPATH="${PYTHONPATH}:/app/src"
-
-# ENTRYPOINT ["mlflow", "server"]
-# CMD ["--host","0.0.0.0","--port","8080","--backend-store-uri","$MLFLOW_TRACKING_URI","--default-artifact-root","gs://${ARTIFACT_BUCKET}/mlruns"]
-
-# Dockerfile
+pydantic==1.10.13
+griffe==0.30.1
+anyio==3.7.1
+joblib==1.3.2
+numpy==2.0.0
+pandas==2.3.0
+scikit-learn==1.6.1
+imbalanced-learn==0.13.0
+ipykernel==6.29.0
+optuna==4.4.0
+tqdm==4.66.1
+prefect==2.11.5
+prefect-github==0.2.5
+mlflow==3.1.1
+tensorflow==2.19.0
+flask==2.2.5
+gunicorn==20.1.0
