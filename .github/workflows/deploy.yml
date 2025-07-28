@@ -8,6 +8,7 @@ on:
       - 'src/**'
       - '.github/workflows/deploy.yml'
       - 'requirements.txt'
+      - 'prefect.yaml'
   workflow_run:
     workflows: ["Terraform"]
     types: ["completed"]

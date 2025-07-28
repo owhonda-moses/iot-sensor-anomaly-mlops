@@ -25,7 +25,7 @@ apt-get install -y \
 echo "Setting up pkg manager & dependencies…"
 # pip + poetry
 python3.11 -m pip install --upgrade pip poetry #>/dev/null 2>&1
-poetry env remove python3.11 || true
+# poetry env remove python3.11 || true
 poetry env use python3.11 #>/dev/null 2>&1
 poetry install --no-interaction --no-ansi #>/dev/null 2>&1
 

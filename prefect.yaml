@@ -1,0 +1,10 @@
+# project metadata
+name: iot-mlops
+prefect-version: 3.4.10
+
+# config for deploying flows
+deployments:
+- name: "IoT Training Deployment"
+  entrypoint: src/iot_anomaly/pipeline.py:iot_training_pipeline
+  work_pool:
+    name: docker-pool
