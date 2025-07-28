@@ -82,6 +82,7 @@ jobs:
             --image ${IMAGE_URI} \
             --region ${GCP_REGION} \
             --platform managed \
+            --memory=2Gi \
             --command="python" \
             --args="-m,iot_anomaly.agent_service" \
             --set-env-vars="PREFECT_API_URL=${{ secrets.PREFECT_API_URL }}" \
