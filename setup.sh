@@ -27,6 +27,7 @@ echo "Setting up pkg manager & dependencies…"
 python3.11 -m pip install --upgrade pip poetry >/dev/null 2>&1
 # poetry env remove python3.11 || true
 poetry env use python3.11 >/dev/null 2>&1
+poetry self add poetry-plugin-export
 poetry lock
 poetry install --no-interaction --no-ansi >/dev/null 2>&1
 

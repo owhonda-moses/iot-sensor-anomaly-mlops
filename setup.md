@@ -10,7 +10,7 @@ mv github_temp .github #rehide
 
 source "$(poetry env info --path)/bin/activate"
 
-pip install prefect-github prefect==2.11.5 --no-deps
+python create_deployment.py europe-west2-docker.pkg.dev/mlops-461322/mlops-docker/mlops-app:a1b2c3d
 
 prefect deployment run 'iot_training_pipeline/IoT Training Deployment'
 
