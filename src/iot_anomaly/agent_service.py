@@ -6,7 +6,7 @@ from flask import Flask, jsonify
 # Start prefect agent
 print("Starting Prefect agent in the background...")
 subprocess.Popen(
-    ["prefect", "agent", "start", "-p", "default-agent-pool"],
+    ["prefect", "agent", "start", "-p", "docker-pool"],
     stdout=sys.stdout, 
     stderr=sys.stderr,
 )
