@@ -10,7 +10,7 @@ mv github_temp .github #rehide
 
 source "$(poetry env info --path)/bin/activate"
 
-python create_deployment.py europe-west2-docker.pkg.dev/mlops-461322/mlops-docker/mlops-app:a1b2c3d
+export MLFLOW_TRACKING_URI="https://mlflow-server-243279652112.europe-west2.run.app"
 
 prefect deployment run 'iot_training_pipeline/IoT Training Deployment'
 

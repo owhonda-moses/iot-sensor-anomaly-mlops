@@ -55,6 +55,7 @@ jobs:
             --image ${IMAGE_URI} \
             --region ${GCP_REGION} \
             --platform managed \
+            --memory=1Gi \
             --vpc-connector mlops-vpc \
             --add-cloudsql-instances ${DB_INSTANCE} \
             --set-env-vars="MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${DB_INSTANCE}" \

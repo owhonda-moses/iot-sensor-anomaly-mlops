@@ -5,7 +5,7 @@ cd /notebooks/iot-mlops
 
 # PAT
 if [ -f pat.env ]; then
-  chmod 600 pat.env          
+  chmod 600 pat.env
   source ./pat.env
   echo "PAT loaded."
 else
@@ -18,21 +18,17 @@ echo "Updating apt caches & sys dependencies…"
 apt-get update -y >/dev/null 2>&1
 apt-get install -y \
   git \
+  tmux \
   python3.11 python3.11-venv python3.11-distutils \
-  python3-pip
+  python3-pip \
   >/dev/null 2>&1
 
 echo "Setting up pkg manager & dependencies…"
 # pip + poetry
 python3.11 -m pip install --upgrade pip poetry >/dev/null 2>&1
-# poetry env remove python3.11 || true
 poetry env use python3.11 >/dev/null 2>&1
-poetry self add poetry-plugin-export
-poetry lock
 poetry install --no-interaction --no-ansi >/dev/null 2>&1
 
-# activate venv
-# source "$(poetry env info --path)/bin/activate"
 echo "Python env ready:$(poetry run python -V)"
 echo "Venv path: $(poetry env info --path)"
 
@@ -68,12 +64,14 @@ git remote add origin \
 git fetch origin main --depth=1 2>/dev/null || true
 git checkout main 2>/dev/null || git checkout -b main
 
-echo "Setup complete."
 
-# git fetch origin main --depth=1
-
-# commit changes
 if [ -n "$(git status --porcelain)" ]; then
   echo "#…there are un-committed changes"
 fi
 
+export MLFLOW_TRACKING_URI="https://mlflow-server-243279652112.europe-west2.run.app"
+
+echo "Starting prefect server..."
+tmux new -d -s prefect 'poetry run prefect server start --host 0.0.0.0'
+
+echo "Setup complete."
