@@ -15,19 +15,20 @@ fi
 
 # apt + python
 echo "Updating apt caches & sys dependencies…"
-apt-get update -y #>/dev/null 2>&1
+apt-get update -y >/dev/null 2>&1
 apt-get install -y \
   git \
   python3.11 python3.11-venv python3.11-distutils \
   python3-pip
-  #>/dev/null 2>&1
+  >/dev/null 2>&1
 
 echo "Setting up pkg manager & dependencies…"
 # pip + poetry
-python3.11 -m pip install --upgrade pip poetry #>/dev/null 2>&1
+python3.11 -m pip install --upgrade pip poetry >/dev/null 2>&1
 # poetry env remove python3.11 || true
-poetry env use python3.11 #>/dev/null 2>&1
-poetry install --no-interaction --no-ansi #>/dev/null 2>&1
+poetry env use python3.11 >/dev/null 2>&1
+poetry lock
+poetry install --no-interaction --no-ansi >/dev/null 2>&1
 
 # activate venv
 # source "$(poetry env info --path)/bin/activate"
