@@ -10,7 +10,13 @@ mv github_temp .github #rehide
 
 source "$(poetry env info --path)/bin/activate"
 
+gcloud auth application-default
+gcloud auth application-default set-quota-project mlops-461322
+
+ngrok config add-authtoken 30VwZJpYwTvu6Bb50TycqCxwwqL_32rYhAnWL1hhb27VsR3p5
+
 export MLFLOW_TRACKING_URI="https://mlflow-server-243279652112.europe-west2.run.app"
+export ARTIFACT_BUCKET="mlops-461322-iot-artifacts"
 
 prefect deployment run 'iot_training_pipeline/IoT Training Deployment'
 

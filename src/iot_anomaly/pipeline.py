@@ -10,6 +10,7 @@ import pandas as pd
 import mlflow
 from prefect import flow, task, get_run_logger
 from prefect.tasks import task_input_hash
+from prefect.blocks.system import String
 
 # core logic
 from iot_anomaly.core import (
@@ -60,6 +61,8 @@ def load_and_preprocess_task(gcs_uri: str):
     # resp = requests.get(url)
     # resp.raise_for_status()
     # df = pd.read_csv(BytesIO(resp.content))
+    
+    df['ts'] = pd.to_datetime(df['ts'], unit='s', utc=True)
 
     df = engineer_flags(df)
     scaler, Xtr, Xte, ytr, yte, X_cols = preprocess(df, random_state=SEED)
@@ -171,9 +174,8 @@ def iot_training_pipeline(run_usl: bool = True, run_sl: bool = True, dry_run: bo
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:/mlruns"))
     mlflow.set_experiment("iot_fault_detection")
 
-    bucket = os.getenv("ARTIFACT_BUCKET")
-    if not bucket:
-        raise ValueError("ARTIFACT_BUCKET environment variable must be set!")
+    bucket_block = String.load("gcs-bucket-name")
+    bucket = bucket_block.value
     gcs_data_path = f"gs://{bucket}/data/iot_telemetry_data.csv"
 
     scaler, Xtr, Xte, ytr, yte, Xtr_norm, X_cols = \

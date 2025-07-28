@@ -27,6 +27,7 @@ mlflow = "^3.1.1"
 tensorflow  = { version = "^2.19.0", extras = ["and-cuda"] }
 flask = "^2.2.5"
 gunicorn = "^20.1.0"
+gcsfs = "^2025.7.0"
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "^1.37.1"
