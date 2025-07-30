@@ -46,6 +46,7 @@ Thumbs.db
 
 setup.md
 gcp_build.txt
+cloudflared.deb
 
 # Terraform local directory & state
 infra/.terraform/

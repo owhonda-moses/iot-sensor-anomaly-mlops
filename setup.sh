@@ -63,7 +63,6 @@ else
   echo "Work pool already exists."
 fi
 
-poetry run prefect work-pool create 'mlops-pool' --type process || true
 echo "Prefect is configured."
 
 
