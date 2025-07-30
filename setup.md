@@ -1,7 +1,3 @@
-chmod +x setup.sh
-source ./setup.sh
-
-
 curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user | grep login
 github-actions-sa@mlops-461322.iam.gserviceaccount.com
 
@@ -10,20 +6,12 @@ mv github_temp .github #rehide
 
 source "$(poetry env info --path)/bin/activate"
 
-gcloud auth application-default
+gcloud auth application-default login
 gcloud auth application-default set-quota-project mlops-461322
 
-ngrok config add-authtoken 30VwZJpYwTvu6Bb50TycqCxwwqL_32rYhAnWL1hhb27VsR3p5
+poetry run prefect worker start --pool 'mlops-pool'
 
 export MLFLOW_TRACKING_URI="https://mlflow-server-243279652112.europe-west2.run.app"
-export ARTIFACT_BUCKET="mlops-461322-iot-artifacts"
-
-prefect deployment run 'iot_training_pipeline/IoT Training Deployment'
-
-sudo apt-get install apt-transport-https ca-certificates gnupg curl
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-sudo apt-get update && sudo apt-get install google-cloud-cli
 
 
 python test.py --single --device 2 --co 0.03 --humidity 45.2 --lpg 0.01 --smoke 0.02 --temp 22.5
@@ -36,14 +24,6 @@ poetry export -f requirements.txt \
 
 
 
-prefect server start
-prefect config set PREFECT_API_URL="http://127.0.0.1:4200/api"
-
-# In your Gradient terminal
-gradient jobs logs --follow pr8nvtrddyu
-
-https://nov7lh7kvs.clg07azjl.paperspacegradient.com:4200 #prefect
-https://nov7lh7kvs.clg07azjl.paperspacegradient.com:5000 #mlflow
 
 
 
@@ -51,59 +31,7 @@ https://nov7lh7kvs.clg07azjl.paperspacegradient.com:5000 #mlflow
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# setup.sh with pip
-#!/usr/bin/env bash
-set -e
-echo "Upgrading pip…"
-pip install --upgrade pip > /dev/null 2>&1
-echo "Installing Python packages…"
-pip install --upgrade --ignore-installed blinker  > /dev/null 2>&1
-pip uninstall greenlet -y > /dev/null 2>&1
-pip install --no-binary :all: greenlet > /dev/null 2>&1
-pip install optuna tqdm imbalanced-learn prefect mlflow poetry  > /dev/null 2>&1
-pip install --upgrade tensorflow[and-cuda] matplotlib scikit-learn imbalanced-learn jupyter notebook numpy pyarrow pyyaml > /dev/null 2>&1
-echo "Updating apt caches…"
-apt-get update -y  > /dev/null 2>&1
-echo "Dependencies installed."
-
-
-
-
+# core
 pydantic==1.10.13
 griffe==0.30.1
 anyio==3.7.1

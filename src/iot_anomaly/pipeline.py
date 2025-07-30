@@ -179,7 +179,7 @@ def iot_training_pipeline(run_usl: bool = True, run_sl: bool = True, dry_run: bo
     gcs_data_path = f"gs://{bucket}/data/iot_telemetry_data.csv"
 
     scaler, Xtr, Xte, ytr, yte, Xtr_norm, X_cols = \
-        load_and_preprocess_task(gcs_data_path).result()
+        load_and_preprocess_task(gcs_data_path)
 
     outputs = {}
     if run_usl:
