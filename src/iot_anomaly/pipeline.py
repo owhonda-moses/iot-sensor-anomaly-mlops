@@ -109,15 +109,18 @@ def usl_task(scaler, Xtr_norm, Xte, yte, X_cols, params: dict, label: str, dry_r
                 mlflow.log_artifact(ae_path, artifact_path=prefix)
             # Ensemble config
             cfg = {"threshold": float(res["threshold"]), "weights": res["weights"]}
-            mlflow.log_dict(cfg, artifact_path=f"{prefix}/ensemble_config.json")
+            cfg_path = os.path.join(tmpdir, "ensemble_config.json")
+            with open(cfg_path, "w") as f:
+                json.dump(cfg, f)
+            mlflow.log_artifact(cfg_path, artifact_path=prefix)
 
         return res
+
 
 @task
 def sl_task(scaler, Xtr, ytr, Xte, yte, X_cols, params: dict, label: str, dry_run: bool):
     """
     Runs Supervised training, logs params/metrics/artifacts to MLflow.
-    If it's the 'optimized' run, it logs all necessary artifacts and registers the model.
     """
     run_name = f"SL_{label}"
     logger = get_run_logger()
@@ -134,40 +137,32 @@ def sl_task(scaler, Xtr, ytr, Xte, yte, X_cols, params: dict, label: str, dry_ru
         )
         mlflow.log_metrics(res["test_metrics"])
 
+        # log artifacts of final model and register
         if label == "optimized":
-            logger.info("Logging artifacts for production model...")
+            logger.info("Logging and registering production model...")
+            mlflow.sklearn.log_model(
+                sk_model=res["model"],
+                artifact_path="sklearn-model"
+            )
+            # Log other metadata
             with tempfile.TemporaryDirectory() as tmpdir:
-                
-                scaler_path = os.path.join(tmpdir, "scaler.pkl")
-                joblib.dump(scaler, scaler_path)
-                mlflow.log_artifact(scaler_path, artifact_path="scaler")
-
-                xcols_path = os.path.join(tmpdir, "X_cols.pkl")
-                with open(xcols_path, "wb") as f:
-                    pickle.dump(X_cols, f)
-                mlflow.log_artifact(xcols_path, artifact_path="meta")
-
                 meta = {
                     "threshold": float(res["avg_thr"]),
                     "metrics": res["test_metrics"],
                 }
-                meta_path = os.path.join(tmpdir, "sl_meta.pkl")
-                with open(meta_path, "wb") as f:
-                    pickle.dump(meta, f)
+                meta_path = os.path.join(tmpdir, "sl_meta.json")
+                with open(meta_path, "w") as f:
+                    json.dump(meta, f, indent=4)
                 mlflow.log_artifact(meta_path, artifact_path="meta")
 
-                mlflow.sklearn.log_model(
-                    sk_model=res["model"],
-                    artifact_path="sklearn-model" 
-                )
-                # register the model version
-                logger.info("Registering model to 'iot-anomaly-model'...")
-                model_uri = f"runs:/{mlflow.active_run().info.run_id}/sklearn-model"
-                mlflow.register_model(
-                    model_uri=model_uri,
-                    name="iot-anomaly-model"
-                )
-        return res
+            # register the model
+            model_uri = f"runs:/{mlflow.active_run().info.run_id}/sklearn-model"
+            mlflow.register_model(
+                model_uri=model_uri,
+                name="iot-anomaly-model"
+            )
+    return res
+
 
 @flow(name="iot_training_pipeline")
 def iot_training_pipeline(run_usl: bool = True, run_sl: bool = True, dry_run: bool = False):
