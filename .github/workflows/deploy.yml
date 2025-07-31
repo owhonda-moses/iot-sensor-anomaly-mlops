@@ -18,11 +18,11 @@ permissions:
   id-token: write
 
 env:
-  GCP_PROJECT:     ${{ secrets.GCP_PROJECT }}
-  GCP_REGION:      ${{ secrets.GCP_REGION }}
-  ARTIFACT_REPO:   mlops-docker
-  IMAGE_NAME:      mlops-app
-  DB_INSTANCE:     "${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg"
+  GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+  GCP_REGION: ${{ secrets.GCP_REGION }}
+  ARTIFACT_REPO: mlops-docker
+  IMAGE_NAME: mlops-app
+  DB_INSTANCE: "${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg"
   ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
 
 jobs:
@@ -50,14 +50,16 @@ jobs:
 
       - name: Deploy MLflow Server
         run: |
-          IMAGE_URI="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest"
           gcloud run deploy mlflow-server \
-            --image ${IMAGE_URI} \
+            --image ${{ steps.build_image.outputs.IMAGE_URI }} \
             --region ${GCP_REGION} \
             --platform managed \
             --memory=1Gi \
+            --allow-unauthenticated \
             --vpc-connector mlops-vpc \
             --add-cloudsql-instances ${DB_INSTANCE} \
+            --set-env-vars="MLFLOW_HTTP_AUTH_USERNAME=admin" \
+            --set-env-vars="MLFLOW_HTTP_AUTH_PASSWORD=${{ secrets.MLFLOW_PASSWORD }}" \
             --set-env-vars="MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${DB_INSTANCE}" \
             --set-env-vars="ARTIFACT_BUCKET=${ARTIFACT_BUCKET}" \
             --command="mlflow" \
