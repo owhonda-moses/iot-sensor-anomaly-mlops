@@ -181,22 +181,22 @@ def iot_training_pipeline(run_usl: bool = True, run_sl: bool = True, dry_run: bo
         outputs["usl_baseline"] = usl_task(
             scaler, Xtr_norm, Xte, yte, X_cols,
             baseline_params, "baseline", dry_run
-        ).result()
+        )
         outputs["usl_optimized"] = usl_task(
             scaler, Xtr_norm, Xte, yte, X_cols,
             best_usl, "optimized", dry_run
-        ).result()
+        )
 
     if run_sl:
         outputs["sl_baseline"] = sl_task(
             scaler, Xtr, ytr, Xte, yte, X_cols,
             sl_base_params, "baseline", dry_run
-        ).result()
+        )
 
         outputs["sl_optimized"] = sl_task(
             scaler, Xtr, ytr, Xte, yte, X_cols,
             best_sl, "optimized", dry_run
-        ).result()
+        )
 
     return outputs
 
