@@ -1,0 +1,29 @@
+services:
+  database:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=prefect
+      - POSTGRES_PASSWORD=prefect
+      - POSTGRES_DB=prefect
+    volumes:
+      - prefect-db:/var/lib/postgresql/data
+
+  prefect-server:
+    image: prefecthq/prefect:2-latest
+    restart: always
+    volumes:
+      - prefect-server:/root/.prefect
+    entrypoint: ["prefect", "server", "start"]
+    environment:
+      - PREFECT_UI_URL=http://127.0.0.1:4200
+      - PREFECT_API_URL=http://127.0.0.1:4200/api
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+    ports:
+      - "4200:4200"
+    depends_on:
+      - database
+
+volumes:
+  prefect-db:
+  prefect-server:
