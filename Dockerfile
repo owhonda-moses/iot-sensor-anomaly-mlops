@@ -20,4 +20,4 @@ ENV PYTHONPATH=/app
 EXPOSE 8080
 
 # overridden for MLflow/Prefect
-ENTRYPOINT ["gunicorn", "--bind", "0.0.0.0:8080", "predict:app"]
+ENTRYPOINT ["gunicorn", "--bind", "0.0.0.0:8080", "iot_anomaly.predict:app"]
