@@ -7,7 +7,7 @@ on:
       - 'Dockerfile'
       - 'src/**'
       - '.github/workflows/deploy.yml'
-      - 'requirements.txt'  
+      - 'requirements.txt'
   workflow_run:
     workflows: ["Terraform"]
     types: ["completed"]
@@ -17,15 +17,15 @@ permissions:
   id-token: write
 
 env:
-  GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
-  GCP_REGION: ${{ secrets.GCP_REGION }}
-  ARTIFACT_REPO: mlops-docker
-  IMAGE_NAME: mlops-app
-  DB_INSTANCE: "${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg"
+  GCP_PROJECT:     ${{ secrets.GCP_PROJECT }}
+  GCP_REGION:      ${{ secrets.GCP_REGION }}
+  ARTIFACT_REPO:   mlops-docker
+  IMAGE_NAME:      mlops-app
+  DB_INSTANCE:     "${{ secrets.GGCP_PROJECT }}:${{ env.GCP_REGION }}:mlflow-pg"
   ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
 
 jobs:
-  build-and-deploy:
+  build-and-deploy-gcp-services:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -49,6 +49,7 @@ jobs:
 
       - name: Deploy MLflow Server
         run: |
+          ARTIFACT_ROOT="gs://${{ env.ARTIFACT_BUCKET }}/mlflow"
           gcloud run deploy mlflow-server \
             --image ${{ steps.build_image.outputs.IMAGE_URI }} \
             --region ${GCP_REGION} \
@@ -62,7 +63,7 @@ jobs:
             --set-env-vars="MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow_user:${{ secrets.DB_PASSWORD }}@/mlflow_db?host=/cloudsql/${DB_INSTANCE}" \
             --set-env-vars="ARTIFACT_BUCKET=${ARTIFACT_BUCKET}" \
             --command="mlflow" \
-            --args="server,--host,0.0.0.0,--port,8080,--backend-store-uri,\$MLFLOW_TRACKING_URI,--default-artifact-root,gs://\$ARTIFACT_BUCKET/mlflow"
+            --args="server,--host,0.0.0.0,--port,8080,--backend-store-uri,\$MLFLOW_TRACKING_URI,--default-artifact-root,${ARTIFACT_ROOT}"
 
       - name: Get MLflow Server URL
         id: get_url
@@ -72,9 +73,8 @@ jobs:
 
       - name: Deploy Prediction Service
         run: |
-          IMAGE_URI="${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/${{ env.ARTIFACT_REPO }}/${{ env.IMAGE_NAME }}:latest"
           gcloud run deploy prediction-service \
-            --image ${IMAGE_URI} \
+            --image ${{ steps.build_image.outputs.IMAGE_URI }} \
             --region ${GCP_REGION} \
             --platform managed \
             --allow-unauthenticated \
