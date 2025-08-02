@@ -12,7 +12,7 @@ from iot_anomaly.core import engineer_flags, preprocess
 # Load from registry
 MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI")
 MODEL_NAME = "iot-anomaly-model"
-MODEL_STAGE = "Production" # fetch production model
+MODEL_ALIAS = "prod"
 
 if not MLFLOW_URI:
     raise EnvironmentError("MLFLOW_TRACKING_URI must be set")
@@ -24,9 +24,9 @@ def load_artifacts_mlflow():
     Loads the production model from the registry and its associated artifacts
     (scaler, metadata, feature columns) from the same MLflow run.
     """
-    model_uri = f"models:/{MODEL_NAME}/{MODEL_STAGE}" 
+    model_uri = f"models:/{MODEL_NAME}@{MODEL_ALIAS}"
     client = mlflow.tracking.MlflowClient()
-    model_version_meta = client.get_latest_versions(name=MODEL_NAME, stages=[MODEL_STAGE])[0]
+    model_version_meta = client.get_model_version_by_alias(name=MODEL_NAME, alias=MODEL_ALIAS)
     run_id = model_version_meta.run_id
     
     scaler_path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path="scaler/scaler.pkl")
@@ -39,7 +39,7 @@ def load_artifacts_mlflow():
     xcols_path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path="meta/X_cols.pkl")
     X_cols = pickle.load(open(xcols_path, "rb"))
 
-    model = mlflow.pyfunc.load_model(model_uri) # load the model
+    model = mlflow.pyfunc.load_model(model_uri)
 
     return scaler, model, threshold, X_cols
 
@@ -78,7 +78,6 @@ def health():
     return jsonify({"status": "ok"}), 200
 
 # cli
-# --- CLI for local testing ---
 if __name__ == "__main__":
     p = argparse.ArgumentParser(
         description="Batch-predict IoT anomalies CLI"
