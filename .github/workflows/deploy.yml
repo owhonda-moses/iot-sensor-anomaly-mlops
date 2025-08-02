@@ -25,7 +25,7 @@ env:
   ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
 
 jobs:
-  build-and-deploy-gcp-services:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -79,3 +79,5 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --set-env-vars="MLFLOW_TRACKING_URI=${{ env.MLFLOW_TRACKING_URI }}"
+            --set-env-vars="MLFLOW_TRACKING_USERNAME=admin" \
+            --set-env-vars="MLFLOW_TRACKING_PASSWORD=${{ secrets.MLFLOW_PASSWORD }}"
