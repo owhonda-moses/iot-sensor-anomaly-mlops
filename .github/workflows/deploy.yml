@@ -18,10 +18,10 @@ permissions:
 
 env:
   GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
-  GCP_REGION:  ${{ secrets.GCP_REGION }}
+  GCP_REGION: ${{ secrets.GCP_REGION }}
   ARTIFACT_REPO: mlops-docker
   IMAGE_NAME: mlops-app
-  DB_INSTANCE: "${{ secrets.GCP_PROJECT }}:${{ env.GCP_REGION }}:mlflow-pg"
+  DB_INSTANCE: "${{ secrets.GCP_PROJECT }}:${{ secrets.GCP_REGION }}:mlflow-pg"
   ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
 
 jobs:
