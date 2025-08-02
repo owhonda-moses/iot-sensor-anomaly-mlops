@@ -170,7 +170,7 @@ def iot_training_pipeline(run_usl: bool = True, run_sl: bool = True, dry_run: bo
     mlflow.set_experiment("iot_fault_detection")
 
     bucket_block = String.load("gcs-bucket-name")
-    bucket = bucket_block.value
+    bucket = bucket_block.value.strip()
     gcs_data_path = f"gs://{bucket}/data/iot_telemetry_data.csv"
 
     scaler, Xtr, Xte, ytr, yte, Xtr_norm, X_cols = \

@@ -10,8 +10,8 @@ gcloud auth application-default login
 gcloud auth application-default set-quota-project mlops-461322
 
 prefect profile create gce
-prefect profile use gce
 prefect config set PREFECT_API_URL="http://34.39.116.245:4200/api"
+prefect profile use gce
 prefect work-pool create 'mlops-pool' --type process
 
 export MLFLOW_TRACKING_URI="https://mlflow-server-243279652112.europe-west2.run.app"
