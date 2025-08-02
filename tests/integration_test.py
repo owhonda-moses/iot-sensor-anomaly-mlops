@@ -2,7 +2,6 @@ import os
 import requests
 import pytest
 
-# Get the service URL from an environment variable
 SERVICE_URL = os.getenv("SERVICE_URL")
 
 @pytest.mark.skipif(not SERVICE_URL, reason="SERVICE_URL not set")
@@ -22,7 +21,7 @@ def test_prediction_service():
     
     assert response.status_code == 200
 
-    # Check the response structure
+    # check response structure
     response_json = response.json()
     assert "predictions" in response_json
     assert "scores" in response_json
