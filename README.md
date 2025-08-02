@@ -65,7 +65,8 @@ This project implements a wide range of MLOps best practices:
 * **Development Environment:** Python, Poetry, WSL
 
 ## 📁 Repository Structure
-![Repository Structure](./images/repo_.png)
+<img src="./images/repo_.png" alt="diagram" width="300" height="420"/>
+
 
 ---
 ### 1. Model Prototyping (Paperspace Gradient)
