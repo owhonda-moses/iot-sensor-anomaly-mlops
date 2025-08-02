@@ -13,6 +13,7 @@ from iot_anomaly.core import engineer_flags, preprocess
 MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI")
 MODEL_NAME = "iot-anomaly-model"
 MODEL_ALIAS = "prod"
+ARTIFACT_BUCKET = os.getenv("ARTIFACT_BUCKET")
 
 if not MLFLOW_URI:
     raise EnvironmentError("MLFLOW_TRACKING_URI must be set")
@@ -66,6 +67,24 @@ app = Flask(__name__)
 @app.route("/predict", methods=["POST"])
 def predict_route():
     payload = request.get_json(force=True)
+    if ARTIFACT_BUCKET:
+        try:
+            # create unique filename based on the timestamp
+            timestamp = datetime.utcnow().strftime("%Y/%m/%d/%H%M%S_%f")
+            blob_name = f"prediction_logs/{timestamp}.json"
+            bucket = storage_client.bucket(ARTIFACT_BUCKET)
+            blob = bucket.blob(blob_name)
+ 
+            # Upload raw json payload
+            blob.upload_from_string(
+                json.dumps(payload), 
+                content_type="application/json"
+            )
+        except Exception as e:
+            # log error without failing prediction request
+            app.logger.error(f"Failed to log prediction payload: {e}")
+
+
     df = pd.DataFrame(payload["data"])
     y_pred, scores = predict_iot(df)
     return jsonify({
