@@ -13,3 +13,5 @@ iot_models/
 ipynb/
 README.md
 setup.sh
+set_wsl.sh
+setup.md

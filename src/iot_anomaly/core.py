@@ -191,13 +191,15 @@ def preprocess(df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42,
 
 
 
-
 def train_usl(X_train_norm, X_test, y_test, params, random_state=42):
     """
     Runs IF + (optional) AE, fuses their anomaly scores, 
     thresholds, and evaluates on y_test.
     """
     # Fit IsolationForest on normals
+    w_if = params.get("w_if", 1.0)
+    w_ae = 1.0 - w_if
+
     iso = IsolationForest(
         n_estimators = params["if_n_estimators"],
         max_samples = params["if_max_samples"],
@@ -208,39 +210,40 @@ def train_usl(X_train_norm, X_test, y_test, params, random_state=42):
     iso_tr = -iso.decision_function(X_train_norm)
     iso_te = -iso.decision_function(X_test)
 
-    # Build & train AE only if w_ae > 0
+    # Initialize autoencoder variables
     ae_tr = np.zeros_like(iso_tr)
     ae_te = np.zeros_like(iso_te)
     ae_model = None
 
-    if params.get("w_ae", 0) > 0:
-        input_dim = X_train_norm.shape[1]
-        enc_dim =  params["ae_encoding_dim"]
-        lr = params["ae_lr"]
+    # hashed out for CPU execution
+    # if params.get("w_ae", 0) > 0:
+    #     input_dim = X_train_norm.shape[1]
+    #     enc_dim =  params["ae_encoding_dim"]
+    #     lr = params["ae_lr"]
 
-        inp = Input(shape=(input_dim,))
-        x   = Dense(enc_dim*2, activation="relu")(inp)
-        x   = Dense(enc_dim,   activation="relu")(x)
-        x   = Dense(enc_dim*2, activation="relu")(x)
-        out = Dense(input_dim,  activation="sigmoid")(x)
+    #     inp = Input(shape=(input_dim,))
+    #     x   = Dense(enc_dim*2, activation="relu")(inp)
+    #     x   = Dense(enc_dim,   activation="relu")(x)
+    #     x   = Dense(enc_dim*2, activation="relu")(x)
+    #     out = Dense(input_dim,  activation="sigmoid")(x)
 
-        ae_model = Model(inp, out)
-        ae_model.compile(optimizer=Adam(lr), loss="mse")
+    #     ae_model = Model(inp, out)
+    #     ae_model.compile(optimizer=Adam(lr), loss="mse")
 
-        ae_model.fit(
-            X_train_norm, X_train_norm,
-            epochs = params["ae_epochs"],
-            batch_size = params["ae_batch_size"],
-            validation_split = 0.1,
-            shuffle = True,
-            verbose = 0
-        )
+    #     ae_model.fit(
+    #         X_train_norm, X_train_norm,
+    #         epochs = params["ae_epochs"],
+    #         batch_size = params["ae_batch_size"],
+    #         validation_split = 0.1,
+    #         shuffle = True,
+    #         verbose = 0
+    #     )
 
-        Xtr_pred = ae_model.predict(X_train_norm, verbose=0)
-        ae_tr     = np.mean((Xtr_pred - X_train_norm)**2, axis=1)
+    #     Xtr_pred = ae_model.predict(X_train_norm, verbose=0)
+    #     ae_tr    = np.mean((Xtr_pred - X_train_norm)**2, axis=1)
 
-        Xte_pred = ae_model.predict(X_test, verbose=0)
-        ae_te     = np.mean((Xte_pred - X_test)**2, axis=1)
+    #     Xte_pred = ae_model.predict(X_test, verbose=0)
+    #     ae_te    = np.mean((Xte_pred - X_test)**2, axis=1)
 
     # Stack & scale IF+AE scores into [0,1]
     mat_tr = np.vstack([iso_tr, ae_tr]).T
