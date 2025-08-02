@@ -1,4 +1,4 @@
-# End-to-End MLOps Pipeline for IoT Anomaly Detection
+# MLOps Pipeline for IoT Anomaly Detection
 
 This repository contains the code and infrastructure for a complete MLOps project, developed as a capstone for the [DataTalksClub MLOps Zoomcamp](https://github.com/DataTalksClub/mlops-zoomcamp). The project automates the training, deployment, tracking, and monitoring of a machine learning model designed to detect anomalies in sensor data from IoT devices.
 
@@ -98,7 +98,7 @@ In your GitHub repository settings, add the following secrets:
 * `GCP_PROJECT`: Your GCP project ID.
 * `GCP_SA_KEY`: The JSON key for your GCP service account.
 * `DB_PASSWORD`: The password for the `mlflow_user` in your Cloud SQL instance.
-* `MLFLOW_PASSWORD`: A password of your choice for the MLflow UI basic auth.
+* `MLFLOW_PASSWORD`: Password for the MLflow UI basic auth.
 
 #### **Local Environment Setup (WSL)**
 1.  Clone this repository to your local machine (WSL).
@@ -162,7 +162,7 @@ This project uses standard tools to maintain high code quality.
 
 1.  The live prediction service logs all incoming requests to a `prediction_logs/` folder in the GCS bucket.
 2.  A separate Prefect flow, `src/iot_anomaly/monitoring.py`, can be deployed and scheduled to run daily.
-3.  This flow calculates the [Kolmogorov-Smirnov](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test) statistic for key features to detect data drift and logs the results back to a dedicated "model_monitoring" experiment in MLflow.
+3.  This flow calculates the [Kolmogorov-Smirnov](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test) statistic for key features to detect drift and logs the results back to a dedicated "model_monitoring" experiment in MLflow.
 
 ## Future Work
 
