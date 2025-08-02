@@ -9,9 +9,17 @@ source "$(poetry env info --path)/bin/activate"
 gcloud auth application-default login
 gcloud auth application-default set-quota-project mlops-461322
 
-poetry run prefect worker start --pool 'mlops-pool'
+prefect profile create gce
+prefect profile use gce
+prefect config set PREFECT_API_URL="http://34.39.116.245:4200/api"
+prefect work-pool create 'mlops-pool' --type process
 
 export MLFLOW_TRACKING_URI="https://mlflow-server-243279652112.europe-west2.run.app"
+export MLFLOW_TRACKING_USERNAME="admin"
+export MLFLOW_TRACKING_PASSWORD="mlflow_pass8080"
+
+prefect worker start --pool 'mlops-pool'
+"run deployment script"
 
 
 python test.py --single --device 2 --co 0.03 --humidity 45.2 --lpg 0.01 --smoke 0.02 --temp 22.5
@@ -23,8 +31,8 @@ poetry export -f requirements.txt \
   --without-hashes --output requirements.txt
 
 
-
-
+prefect profile create mlops --from-url http://https://d74feea798a164d668cd907e5cf1c8d87.clg07azjl.paperspacegradient.com/:4200/api
+postgresql+asyncpg://prefect_user:prefect_pass8080@/prefect_db?host=/cloudsql/mlops-461322:europe-west2:mlflow-pg
 
 
 
