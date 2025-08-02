@@ -6,7 +6,7 @@ cd /notebooks/iot-mlops
 
 if [ -f pat.env ]; then
   chmod 600 pat.env
-  source ./pat.env
+  source ./pat.env # git PAT token
   echo "PAT loaded."
 else
   echo "pat.env not found." >&2
@@ -37,39 +37,11 @@ poetry env use python3.11 >/dev/null 2>&1
 poetry install --no-interaction --no-ansi >/dev/null 2>&1
 echo "Python env ready: $(poetry run python -V)"
 
-# prefect server
-echo "Starting prefect.."
-if ! tmux has-session -t prefect 2>/dev/null; then
-  tmux new -d -s prefect 'poetry run prefect server start --host 0.0.0.0'
-  echo "Prefect server launched"
-else
-  echo "tmux session already exists. Skipping launch."
-fi
-sleep 5 
-
-
-if ! poetry run prefect profile inspect mlops >/dev/null 2>&1; then
-  poetry run prefect profile create mlops
-fi
-
-
-poetry run prefect profile use mlops
-poetry run prefect config set PREFECT_API_URL="http://127.0.0.1:4200/api"
-
-if ! poetry run prefect work-pool inspect 'mlops-pool' >/dev/null 2>&1; then
-  poetry run prefect work-pool create 'mlops-pool' --type process
-  echo "Work pool created."
-else
-  echo "Work pool already exists."
-fi
-
-echo "Prefect is configured."
-
 
 # git config
 echo "Configuring git"
-git config --global user.name  "owhonda-moses"
-git config --global user.email "owhondamoses7@gmail.com"
+git config --global user.name  "     "
+git config --global user.email "      "
 
 # ~/.netrc for https auth
 cat > "$HOME/.netrc" <<EOF
@@ -96,5 +68,4 @@ git checkout main 2>/dev/null || git checkout -b main
 if [ -n "$(git status --porcelain)" ]; then
   echo "#…there are un-committed changes"
 fi
-
 echo "Setup complete! run gcloud login."

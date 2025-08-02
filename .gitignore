@@ -48,7 +48,6 @@ Thumbs.db
 
 setup.md
 gcp_build.txt
-set_wsl.sh
 
 # Terraform local directory & state
 infra/.terraform/
