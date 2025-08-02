@@ -64,9 +64,8 @@ This project implements a wide range of MLOps best practices:
 * **Containerization:** Docker
 * **Development Environment:** Python, Poetry, WSL
 
-## 📁 Repository Structure
+## Repository Structure
 <img src="./images/repo_.png" alt="diagram" width="300" height="420"/>
-
 
 ---
 ### 1. Model Prototyping (Paperspace Gradient)
