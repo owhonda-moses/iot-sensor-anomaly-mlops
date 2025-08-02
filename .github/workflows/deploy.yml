@@ -78,6 +78,6 @@ jobs:
             --region ${GCP_REGION} \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars="MLFLOW_TRACKING_URI=${{ env.MLFLOW_TRACKING_URI }}"
+            --set-env-vars="MLFLOW_TRACKING_URI=${{ env.MLFLOW_TRACKING_URI }}" \
             --set-env-vars="MLFLOW_TRACKING_USERNAME=admin" \
             --set-env-vars="MLFLOW_TRACKING_PASSWORD=${{ secrets.MLFLOW_PASSWORD }}"
