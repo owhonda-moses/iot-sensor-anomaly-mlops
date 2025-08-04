@@ -200,8 +200,21 @@ The next steps to further mature the pipeline include:
 * **CI/CD for Integration Tests:** Add a dedicated step in the `deploy.yml` workflow to run the `make test` command after the `prediction-service` is successfully deployed to automatically verify the health of the live API as part of the CI/CD process.
 
 
-
 ## Data Source & Acknowledgements
 
 * This project is the capstone for the **DataTalksClub MLOps Zoomcamp**.
 * The dataset used is the [Environmental Sensor Telemetry Data](https://www.kaggle.com/datasets/garystafford/environmental-sensor-data-132k/data) available on Kaggle.
+
+
+```bash
+# This project uses cloud resources on GCP that incur costs and to manage spending when you are not actively using the project, you must stop the persistent services. To stop all major compute charges, you need to stop the two main stateful services:
+
+GCE VM
+Cloud SQL Instance
+
+# To eliminate all costs, you can destroy all the infrastructure you created with Terraform but be aware, this is irreversible and will permanently delete your GCE VM, Cloud SQL database (including all MLflow data), and GCS bucket.
+```
+In your `infra/` directory, run:
+```bash
+terraform destroy
+```
