@@ -1,4 +1,4 @@
-# MLOps Pipeline for IoT Anomaly Detection
+# GCP Hosted MLOps Pipeline for IoT Anomaly Detection
 
 This repository contains the code and infrastructure for a complete MLOps project, developed as a capstone for the [DataTalksClub MLOps Zoomcamp](https://github.com/DataTalksClub/mlops-zoomcamp). The project automates the training, deployment, tracking, and monitoring of a machine learning model designed to detect anomalies in sensor data from IoT devices.
 
@@ -180,7 +180,7 @@ Running the automated integration test suite with `make test`.
 3.  This flow calculates the [Kolmogorov-Smirnov](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test) statistic for key features to detect drift and logs the results back to a dedicated `model_monitoring` experiment in MLflow.
 
 ### Monitoring Results
-After generating several predictions, the `model_monitoring_flow` was executed. The flow successfully detected drift between the reference (training) data and the new production data. The Kolmogorov-Smirnov test produced the p-values below, which were logged to a dedicated "model_monitoring" experiment in MLflow
+After generating several predictions, the `model_monitoring_flow` was executed. The flow successfully detected some drift between the reference (training) data and the new production data.
 
 ![Monitoring](./images/monitoring_.png)
 
