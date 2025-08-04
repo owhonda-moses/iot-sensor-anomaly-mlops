@@ -3,18 +3,18 @@
 This repository contains the code and infrastructure for a complete MLOps project, developed as a capstone for the [DataTalksClub MLOps Zoomcamp](https://github.com/DataTalksClub/mlops-zoomcamp). The project automates the training, deployment, tracking, and monitoring of a machine learning model designed to detect anomalies in sensor data from IoT devices.
 
 ## Table of Contents
-* [Problem Statement](#-problem-statement)
-* [Project Architecture](#-project-architecture)
-* [Key MLOps Features](#-key-mlops-features)
-* [Tech Stack](#-tech-stack)
-* [Repository Structure](#-repository-structure)
-* [Setup Guide](#-setup-guide)
-* [Workflow](#-workflow)
-* [Code Quality & Testing](#-code-quality--testing)
-* [Model Monitoring](#-model-monitoring)
-* [Future Work](#-future-work)
-* [Data Source & Acknowledgements](#-data-source--acknowledgements)
-
+* [Problem Statement](#problem-statement)
+* [Project Architecture](#project-architecture)
+* [Key MLOps Features](#key-mlops-features)
+* [Tech Stack](#tech-stack)
+* [Repository Structure](#repository-structure)
+* [Setup Guide](#setup-guide)
+* [Workflow](#workflow)
+* [Code Quality & Testing](#code-quality--testing)
+* [Demonstration](#demonstration)
+* [Model Monitoring](#model-monitoring)
+* [Future Work](#future-work)
+* [Data Source & Acknowledgements](#data-source--acknowledgements)
 ## Problem Statement
 
 In the world of IoT, fleets of devices constantly stream telemetry data. Ensuring the quality and reliability of this data is crucial for analytics and operations. Malfunctioning sensors can produce anomalous readings, leading to incorrect insights and poor business decisions. This project aims to build an automated system that can:
@@ -37,7 +37,7 @@ The system is composed of several decoupled services, primarily hosted on Google
 * **CI/CD (GitHub Actions):** The entire process of building the application's Docker image and deploying the MLflow and prediction services to GCP is automated using GitHub Actions.
 * **Infrastructure as Code (Terraform):** All required GCP resources (Cloud SQL, GCS, Artifact Registry, GCE VM, etc.) are defined and provisioned using Terraform.
 
----
+
 
 ## Key MLOps Features
 
@@ -66,6 +66,9 @@ This project implements a wide range of MLOps best practices:
 <img src="./images/repo_.png" alt="diagram" width="300" height="420"/>
 
 ---
+
+## Setup Guide
+
 ### 1. Model Prototyping (Paperspace Gradient)
 Initial model development, including training a TensorFlow-based autoencoder, was performed on a **Paperspace Gradient Notebook** with GPU support. The `setup.sh` script is tailored to this ephemeral environment. Due to platform limitations (e.g., prohibitions on tunneling tools), the final orchestration and serving components were moved to a more stable, self-hosted architecture.
 
@@ -109,7 +112,7 @@ This setup is for the machine that will run the Prefect worker.
     prefect work-pool create 'mlops-pool' --type process
     ```
 
----
+
 ## Workflow
 
 1.  **Start Your Worker (Terminal 1):** Activate your environment, set your cloud credentials, and start the worker. It must be left running to execute pipelines.
@@ -137,7 +140,7 @@ This setup is for the machine that will run the Prefect worker.
 
 ![MLflow](./images/mlflow_.png)
 
----
+
 ## Code Quality & Testing
 
 This project uses standard tools to maintain high code quality.
@@ -154,6 +157,21 @@ This project uses standard tools to maintain high code quality.
     make test
     ```
 
+## Demonstration
+### API Prediction Test
+
+Running the `test.sh` script to query the live prediction endpoint.
+
+![test_sh](./images/test_sh.png)
+
+### Integration Test
+
+Running the automated integration test suite with `make test`.
+
+![test_integration](./images/test_intgr.png)
+
+
+
 ## Model Monitoring
 
 
@@ -161,12 +179,27 @@ This project uses standard tools to maintain high code quality.
 2.  A separate Prefect flow, `src/iot_anomaly/monitoring.py`, is deployed and scheduled to run daily at 6am.
 3.  This flow calculates the [Kolmogorov-Smirnov](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test) statistic for key features to detect drift and logs the results back to a dedicated `model_monitoring` experiment in MLflow.
 
+### Monitoring Results
+After generating several predictions, the `model_monitoring_flow` was executed. The flow successfully detected drift between the reference (training) data and the new production data. The Kolmogorov-Smirnov test produced the p-values below, which were logged to a dedicated "model_monitoring" experiment in MLflow
+
+![Monitoring](./images/monitoring_.png)
+
+
+A p-value < 0.05 indicates a statistically significant difference in the data distributions. These results suggest that the model may need to be retrained on newer data to maintain its performance.
+
 ## Future Work
 
-* Implement a more comprehensive monitoring stack with **Evidently AI, Prometheus, and Grafana** for detailed dashboards and alerting.
-* Automate the retraining pipeline by having the monitoring flow conditionally trigger the training flow if drift is detected.
+The next steps to further mature the pipeline include:
+
+* **Comprehensive Monitoring & Alerting:** Integrate **Evidently AI** for more detailed drift and performance reports. Send these metrics to a **Prometheus** database and build a **Grafana** dashboard for visualization. Configure **Alertmanager** to send notifications to Slack or email when drift is detected.
+
+* **Automated Retraining Trigger:** Enhance the monitoring flow to conditionally trigger the `iot-training-pipeline` via the Prefect API whenever a key performance metric (like F1-score on new ground truth data) or a drift metric drops below a defined threshold.
+
+* **CI/CD for Integration Tests:** Add a dedicated step in the `deploy.yml` workflow to run the `make test` command after the `prediction-service` is successfully deployed to automatically verify the health of the live API as part of the CI/CD process.
+
+
 
 ## Data Source & Acknowledgements
 
 * This project is the capstone for the **DataTalksClub MLOps Zoomcamp**.
-* The dataset used is the [Environmental Sensor Telemetry Data](https://www.kaggle.com/datasets/garystafford/environmental-sensor-data-132k/data), created by Gary A. Stafford and available on Kaggle.
+* The dataset used is the [Environmental Sensor Telemetry Data](https://www.kaggle.com/datasets/garystafford/environmental-sensor-data-132k/data) available on Kaggle.
