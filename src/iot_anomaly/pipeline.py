@@ -118,9 +118,10 @@ def usl_task(scaler, Xtr_norm, Xte, yte, X_cols, params: dict, label: str, dry_r
 
 
 @task
+@task
 def sl_task(scaler, Xtr, ytr, Xte, yte, X_cols, params: dict, label: str, dry_run: bool):
     """
-    Runs Supervised training, logs params/metrics/artifacts to MLflow.
+    Runs Supervised training, logs all necessary artifacts, and registers the model.
     """
     run_name = f"SL_{label}"
     logger = get_run_logger()
@@ -137,25 +138,32 @@ def sl_task(scaler, Xtr, ytr, Xte, yte, X_cols, params: dict, label: str, dry_ru
         )
         mlflow.log_metrics(res["test_metrics"])
 
-        # log artifacts of final model and register
+        # log all artifacts and register it
         if label == "optimized":
-            logger.info("Logging and registering production model...")
+            logger.info("Logging and registering production model and artifacts...")
+            
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # scaler
+                scaler_path = os.path.join(tmpdir, "scaler.pkl")
+                joblib.dump(scaler, scaler_path)
+                mlflow.log_artifact(scaler_path, artifact_path="scaler")
+                # feature columns list
+                xcols_path = os.path.join(tmpdir, "X_cols.pkl")
+                with open(xcols_path, "wb") as f:
+                    pickle.dump(X_cols, f)
+                mlflow.log_artifact(xcols_path, artifact_path="meta")
+                # metadata (threshold, etc.) with the correct name
+                meta = {"threshold": float(res["avg_thr"])}
+                meta_path = os.path.join(tmpdir, "sl_meta.pkl")
+                with open(meta_path, "wb") as f:
+                    pickle.dump(meta, f)
+                mlflow.log_artifact(meta_path, artifact_path="meta")
+
+            # log and register the model
             mlflow.sklearn.log_model(
                 sk_model=res["model"],
                 artifact_path="sklearn-model"
             )
-            # Log other metadata
-            with tempfile.TemporaryDirectory() as tmpdir:
-                meta = {
-                    "threshold": float(res["avg_thr"]),
-                    "metrics": res["test_metrics"],
-                }
-                meta_path = os.path.join(tmpdir, "sl_meta.json")
-                with open(meta_path, "w") as f:
-                    json.dump(meta, f, indent=4)
-                mlflow.log_artifact(meta_path, artifact_path="meta")
-
-            # register the model
             model_uri = f"runs:/{mlflow.active_run().info.run_id}/sklearn-model"
             mlflow.register_model(
                 model_uri=model_uri,
