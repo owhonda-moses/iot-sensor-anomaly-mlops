@@ -27,7 +27,49 @@ In the world of IoT, fleets of devices constantly stream telemetry data. Ensurin
 ## Project Architecture
 The system is composed of several decoupled services, primarily hosted on Google Cloud Platform (GCP) and orchestrated by a self-hosted Prefect server.
 
-![Project Architecture](./images/project_.png)
+```mermaid
+graph LR
+    subgraph " "
+        direction TB
+        A("
+            **1. Local Environment**
+            [WSL Machine]
+            - Developer & Code
+            - Prefect Worker
+        ");
+    end
+
+    subgraph " "
+        direction TB
+        B("
+            **2. Automation & Source Control**
+            - GitHub Repository
+            - GitHub Actions (CI/CD)
+        ");
+    end
+
+    subgraph " "
+        direction TB
+        C("
+            **3. Cloud Platform (GCP)**
+            - Prefect Server
+            [GCE VM]
+            - MLflow Server
+            [Cloud Run]
+            - Prediction API
+            [Cloud Run]
+            - Backend
+             [Cloud SQL & GCS]
+        ");
+    end
+
+    A -- "Push Code" --> B;
+    B -- "Builds & Deploys Services" --> C;
+    A -- "Runs Worker & Gets Jobs" --> C;
+    C -- "View UIs & Results" --> A;
+
+```
+
 
 
 * **Orchestration Server (Prefect):** A self-hosted Prefect server runs in a Docker container on a persistent **Google Compute Engine (GCE)** VM. This provides the UI and backend for managing and observing all pipelines.
@@ -63,7 +105,8 @@ This project implements a wide range of MLOps best practices:
 * **Development Environment:** Python, Poetry, WSL
 
 ## Repository Structure
-<img src="./images/repo_.png" alt="diagram" width="300" height="420"/>
+
+<img src="./images/repo_1.png" alt="diagram" width="300" height="420"/>
 
 ---
 
