@@ -93,7 +93,9 @@ Initial model development, including training a TensorFlow-based autoencoder, wa
 1. In your GitHub repository settings, add the following secrets:
 * `GCP_PROJECT`: Your GCP project ID.
 * `GCP_SA_KEY`: The JSON key for your GCP service account.
-* `DB_PASSWORD`: The password for the `mlflow_user` you set in `terraform.tfvars`..
+* `ARTIFACT_BUCKET`: Your GCP artifact bucket.
+* `ARTIFACT_REGISTRY`: Your docker image repository.
+* `DB_PASSWORD`: The password for the `mlflow_user` you set in `terraform.tfvars`.
 * `MLFLOW_PASSWORD`: Password for the MLflow UI basic auth.
 2. Pushing a change to the `src` directory, `Dockerfile`, `deploy.yml`, or `requirements.txt` on the `main` branch will trigger the workflow to build and deploy your services to Cloud Run.
 
@@ -101,7 +103,7 @@ Initial model development, including training a TensorFlow-based autoencoder, wa
 ### 5. Local Environment Setup (WSL)
 This setup is for the machine that will run the Prefect worker.
 1.  Clone this repository to your local machine (WSL).
-2.  Create a `.env` file for your secret environment variables (e.g., MLflow password).
+2.  Create a `.env` file for your secret environment variables.
 3.  Run the setup script: `sudo ./set_wsl.sh`. This will install all necessary system tools (like `gcloud`, `poetry`) and Python dependencies.
 4.  Authenticate with Google Cloud: `gcloud auth application-default login`.
 5.  Connect your local Prefect CLI to your GCE server:
