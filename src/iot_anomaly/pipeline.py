@@ -89,6 +89,7 @@ def usl_task(
     """
     Runs Unsupervised training, logs params/metrics/artifacts to MLflow.
     """
+    mlflow.set_experiment("iot_fault_detection")
     run_name = f"USL_{label}"
     logger = get_run_logger()
     with mlflow.start_run(run_name=run_name):
@@ -138,6 +139,7 @@ def sl_task(
     """
     Runs Supervised training, logs all necessary artifacts, and registers the model.
     """
+    mlflow.set_experiment("iot_fault_detection")
     run_name = f"SL_{label}"
     logger = get_run_logger()
     with mlflow.start_run(run_name=run_name):
@@ -193,7 +195,6 @@ def iot_training_pipeline(
     run_usl: bool = True, run_sl: bool = True, dry_run: bool = False
 ):
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:/mlruns"))
-    mlflow.set_experiment("iot_fault_detection")
 
     bucket_block = String.load("gcs-bucket-name")
     bucket = bucket_block.value.strip()

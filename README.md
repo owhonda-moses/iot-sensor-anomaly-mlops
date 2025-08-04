@@ -25,19 +25,17 @@ In the world of IoT, fleets of devices constantly stream telemetry data. Ensurin
 5.  Monitor the deployed model for performance degradation or data drift.
 
 ## Project Architecture
+The system is composed of several decoupled services, primarily hosted on Google Cloud Platform (GCP) and orchestrated by a self-hosted Prefect server.
+
 ![Project Architecture](./images/project_.png)
 
 
-The system is composed of several decoupled services, primarily hosted on Google Cloud Platform (GCP) and orchestrated by a self-hosted Prefect server.
-
-
-
 * **Orchestration Server (Prefect):** A self-hosted Prefect server runs in a Docker container on a persistent **Google Compute Engine (GCE)** VM. This provides the UI and backend for managing and observing all pipelines.
-* **Execution Worker (Prefect):** A Prefect worker runs in the local development environment (WSL/Paperspace) to execute the training pipelines.
+* **Execution Worker (Prefect):** A Prefect worker runs in the local development environment (WSL) to execute the training pipelines.
 * **Experiment Tracking (MLflow):** An MLflow server is deployed as a serverless application on **GCP Cloud Run**. It uses a **Cloud SQL (PostgreSQL)** instance for metadata and a **Google Cloud Storage (GCS)** bucket for artifacts, providing a persistent and scalable backend for the Model Registry and experiment logs.
 * **Model Serving (Prediction Service):** The final trained model is served via a REST API deployed as a separate serverless application on **GCP Cloud Run**.
 * **CI/CD (GitHub Actions):** The entire process of building the application's Docker image and deploying the MLflow and prediction services to GCP is automated using GitHub Actions.
-* **Infrastructure as Code (Terraform):** All required GCP resources (Cloud SQL, GCS, Artifact Registry, etc.) are defined and provisioned using Terraform.
+* **Infrastructure as Code (Terraform):** All required GCP resources (Cloud SQL, GCS, Artifact Registry, GCE VM, etc.) are defined and provisioned using Terraform.
 
 ---
 
@@ -51,7 +49,7 @@ This project implements a wide range of MLOps best practices:
 * Workflow Orchestration
 * Model Serving (as a REST API)
 * Model Monitoring
-* Code Quality & Testing
+* Code Quality & Testing (Linting, Formatting, Pre-commit Hooks, Integration Tests)
 
 ## Tech Stack
 
@@ -81,32 +79,32 @@ Initial model development, including training a TensorFlow-based autoencoder, wa
 
 #### **GCP Infrastructure (Terraform)**
 1.  Navigate to the `infra/` directory.
-2.  Create a `terraform.tfvars` file and provide your `project_id`.
-3.  Run `terraform init`, `terraform plan`, and `terraform apply` to provision the GCS bucket, Cloud SQL instance, and Artifact Registry.
-
-#### **Prefect Server (GCE)**
-1.  Follow the instructions in the GCP Console to create a new **Compute Engine VM instance**.
-2.  Use a small machine type (e.g., `e2-micro`).
-3.  Use the **startup script** method with a Debian OS to install Docker and run the official `prefecthq/prefect:2-latest` container.
-4.  Create a **firewall rule** to allow incoming TCP traffic on port `4200`.
-5.  Note the **External IP** of the created VM.
+2.  Create a `terraform.tfvars` file and provide your `project_id`, `region`, and a secure `db_password`.
+3.  Add `terraform.tfvars` to your `.gitignore` file.
+4.  Run `terraform init` and `terraform apply`. This will provision the GCS bucket, Cloud SQL instance, GCE VM for Prefect, and all necessary permissions.
+5.  Note the outputs, especially the `gce_vm_external_ip`.
 
 ### 4. Application Deployment & Setup
 
 #### **GitHub Secrets**
-In your GitHub repository settings, add the following secrets:
+1. In your GitHub repository settings, add the following secrets:
 * `GCP_PROJECT`: Your GCP project ID.
 * `GCP_SA_KEY`: The JSON key for your GCP service account.
-* `DB_PASSWORD`: The password for the `mlflow_user` in your Cloud SQL instance.
+* `DB_PASSWORD`: The password for the `mlflow_user` you set in `terraform.tfvars`..
 * `MLFLOW_PASSWORD`: Password for the MLflow UI basic auth.
+2. Pushing a change to the `src` directory, `Dockerfile`, `deploy.yml`, or `requirements.txt` on the `main` branch will trigger the workflow to build and deploy your services to Cloud Run.
 
-#### **Local Environment Setup (WSL)**
+
+### 5. Local Environment Setup (WSL)
+This setup is for the machine that will run the Prefect worker.
 1.  Clone this repository to your local machine (WSL).
-2.  Run the setup script: `sudo ./set_wsl.sh`. This will install all necessary system and Python dependencies.
-3.  Authenticate with Google Cloud: `gcloud auth application-default login` and `gcloud auth application-default set-quota-project [YOUR_PROJECT_ID]`.
-4.  Connect your local Prefect CLI to your new server:
+2.  Create a `.env` file for your secret environment variables (e.g., MLflow password).
+3.  Run the setup script: `sudo ./set_wsl.sh`. This will install all necessary system tools (like `gcloud`, `poetry`) and Python dependencies.
+4.  Authenticate with Google Cloud: `gcloud auth application-default login`.
+5.  Connect your local Prefect CLI to your GCE server:
     ```bash
-    prefect profile create gce --from-url http://[YOUR_GCE_VM_IP]:4200/api
+    prefect profile create gce
+    prefect config set PREFECT_API_URL="http://[YOUR_GCE_VM_IP]:4200/api"
     prefect profile use gce
     prefect work-pool create 'mlops-pool' --type process
     ```
@@ -114,29 +112,26 @@ In your GitHub repository settings, add the following secrets:
 ---
 ## Workflow
 
-1.  **Start Your Worker (Terminal 1):** In your terminal, set your MLflow environment variables and start the worker. This must be left running.
+1.  **Start Your Worker (Terminal 1):** Activate your environment, set your cloud credentials, and start the worker. It must be left running to execute pipelines.
     ```bash
-    export MLFLOW_TRACKING_URI="[https://your-mlflow-server-url.a.run.app](https://your-mlflow-server-url.a.run.app)"
-    export MLFLOW_TRACKING_USERNAME="admin"
-    export MLFLOW_TRACKING_PASSWORD="[your_mlflow_password]"
-    export GOOGLE_CLOUD_PROJECT="[your_project_id]"
-    
-    poetry run prefect worker start --pool 'mlops-pool'
+    source "$(poetry env info --path)/bin/activate"
+    source .env
+    prefect worker start --pool 'mlops-pool'
     ```
 
-2.  **Deploy & Run Your Pipeline (Terminal 2):** Use a second terminal for one-off commands.
+2.  **Terminal 2 (Commands):** Use this terminal to manage and run your pipelines.
     ```bash
     # Create/update the deployment on your server
-    poetry run python prefect_deploy.py
+    python prefect_deploy.py
 
     # Trigger a run
-    poetry run prefect deployment run 'iot-training-pipeline/IoT Training'
+    prefect deployment run 'iot-training-pipeline/IoT Training'
     ```
 
 3.  **Observe:**
     * Watch the run in your **Prefect UI** at `http://[YOUR_GCE_VM_IP]:4200`.
     * View the results in your **MLflow UI** at its GCP Cloud Run URL.
-    
+
 ![Prefect](./images/prefect_.png)
 
 
@@ -150,7 +145,9 @@ This project uses standard tools to maintain high code quality.
 * **Formatter:** `black`
 * **Linter:** `ruff`
 * **Makefile:** Provides shortcuts for common tasks. Run `make format` and `make lint`.
-* **Pre-commit Hooks:** Automatically formats and lints code before every commit. Install with `poetry run pre-commit install`.
+* **Pre-commit Hooks:** Automatically formats and lints code before every commit. Install with
+`poetry run pre-commit install` or
+`pre-commit install` from poetry environment.
 * **Integration Test:** To test the live prediction endpoint, set the service URL and run pytest:
     ```bash
     export SERVICE_URL="[https://your-prediction-service-url.run.app](https://your-prediction-service-url.run.app)"
@@ -161,12 +158,12 @@ This project uses standard tools to maintain high code quality.
 
 
 1.  The live prediction service logs all incoming requests to a `prediction_logs/` folder in the GCS bucket.
-2.  A separate Prefect flow, `src/iot_anomaly/monitoring.py`, can be deployed and scheduled to run daily.
-3.  This flow calculates the [Kolmogorov-Smirnov](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test) statistic for key features to detect drift and logs the results back to a dedicated "model_monitoring" experiment in MLflow.
+2.  A separate Prefect flow, `src/iot_anomaly/monitoring.py`, is deployed and scheduled to run daily at 6am.
+3.  This flow calculates the [Kolmogorov-Smirnov](https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test) statistic for key features to detect drift and logs the results back to a dedicated `model_monitoring` experiment in MLflow.
 
 ## Future Work
 
-* Implement the comprehensive monitoring stack with **Evidently AI, Prometheus, and Grafana** for detailed dashboards and alerting.
+* Implement a more comprehensive monitoring stack with **Evidently AI, Prometheus, and Grafana** for detailed dashboards and alerting.
 * Automate the retraining pipeline by having the monitoring flow conditionally trigger the training flow if drift is detected.
 
 ## Data Source & Acknowledgements
