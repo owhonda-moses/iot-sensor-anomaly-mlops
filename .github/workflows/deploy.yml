@@ -71,6 +71,7 @@ jobs:
           URL=$(gcloud run services describe mlflow-server --platform managed --region ${{ env.GCP_REGION }} --format 'value(status.url)')
           echo "MLFLOW_TRACKING_URI=${URL}" >> $GITHUB_ENV
 
+
       - name: Deploy Prediction Service
         run: |
           gcloud run deploy prediction-service \
