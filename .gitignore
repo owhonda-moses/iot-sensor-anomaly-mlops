@@ -55,6 +55,7 @@ infra/gcp-sa-key.json
 infra/*.tfstate
 infra/*.tfstate.backup
 infra/.terraform.lock.hcl
+infra/terraform.tfvars
 
 
 data/*.csv

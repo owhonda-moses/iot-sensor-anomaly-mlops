@@ -26,11 +26,15 @@ if not MLFLOW_URI:
 mlflow.set_tracking_uri(MLFLOW_URI)
 storage_client = storage.Client()
 
+# global cache for artifacts
+_artifacts = None
+
 
 def load_artifacts_mlflow():
     """
-    Loads the production model from the registry and its associated artifacts
+    Connects to MLflow and downloads all necessary artifacts.
     """
+    print("Loading model artifacts from MLflow...")
     model_uri = f"models:/{MODEL_NAME}@{MODEL_ALIAS}"
     client = mlflow.tracking.MlflowClient()
 
@@ -56,20 +60,32 @@ def load_artifacts_mlflow():
     X_cols = pickle.load(open(xcols_path, "rb"))
 
     model = mlflow.pyfunc.load_model(model_uri)
+    print("Artifacts loaded successfully.")
     return scaler, model._model_impl, threshold, X_cols
 
 
-SCALER, MODEL, THRESHOLD, X_COLS = load_artifacts_mlflow()
+def get_artifacts():
+    """
+    Manages the global cache, loading artifacts only on the first call.
+    """
+    global _artifacts
+    if _artifacts is None:
+        _artifacts = load_artifacts_mlflow()
+    return _artifacts
 
 
+# prediction
 def predict_iot(raw_df: pd.DataFrame):
+    # Get the scaler, model, etc. from our caching function
+    scaler, model, threshold, x_cols = get_artifacts()
+
     df = raw_df.copy()
     df["ts"] = pd.to_datetime(df["ts"], unit="s", utc=True)
     df = engineer_flags(df)
-    _, X_tr, *rest = preprocess(df, test_size=0, reference_columns=X_COLS)
-    X_scaled = SCALER.transform(X_tr)
-    probs = MODEL.predict_proba(X_scaled)[:, 1]
-    y_pred = (probs >= THRESHOLD).astype(int)
+    _, X_tr, *rest = preprocess(df, test_size=0, reference_columns=x_cols)
+    X_scaled = scaler.transform(X_tr)
+    probs = model.predict_proba(X_scaled)[:, 1]
+    y_pred = (probs >= threshold).astype(int)
     return y_pred, probs
 
 

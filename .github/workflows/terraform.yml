@@ -1,11 +1,11 @@
 name: Terraform
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'infra/**'
-      - '.github/workflows/terraform.yml'
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - 'infra/**'
+  #     - '.github/workflows/terraform.yml'
   workflow_dispatch: {}
 
 jobs:
@@ -13,8 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
-      TF_VAR_project_id:  ${{ secrets.GCP_PROJECT }}
-      TF_VAR_region:      ${{ secrets.GCP_REGION }}
+      TF_VAR_project_id: ${{ secrets.GCP_PROJECT }}
+      TF_VAR_region: ${{ secrets.GCP_REGION }}
+      TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+      TF_VAR_prefect_db_password: ${{ secrets.PREFECT_DB_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v3
