@@ -118,7 +118,6 @@ def usl_task(scaler, Xtr_norm, Xte, yte, X_cols, params: dict, label: str, dry_r
 
 
 @task
-@task
 def sl_task(scaler, Xtr, ytr, Xte, yte, X_cols, params: dict, label: str, dry_run: bool):
     """
     Runs Supervised training, logs all necessary artifacts, and registers the model.
