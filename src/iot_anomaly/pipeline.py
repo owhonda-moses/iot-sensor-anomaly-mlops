@@ -1,9 +1,16 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import warnings
+
 warnings.filterwarnings("ignore")
 
-import time, argparse, pickle, joblib, tempfile, json
+import time
+import argparse
+import pickle
+import joblib
+import tempfile
+import json
 from datetime import timedelta
 
 import pandas as pd
@@ -13,28 +20,33 @@ from prefect.tasks import task_input_hash
 from prefect.blocks.system import String
 
 # core logic
-from iot_anomaly.core import (
-    engineer_flags,
-    preprocess,
-    train_usl,
-    train_sl
-)
+from iot_anomaly.core import engineer_flags, preprocess, train_usl, train_sl
 
 
 # DRIVE_FILE_ID = "1fGQ_gJ8_1tpkaCN7SUc3bi6a81ZfPnVo"
 
 baseline_params = {
-    "if_n_estimators": 100, "if_max_samples": "auto", "contamination": 0.01,
-    "ae_encoding_dim": 16,  "ae_lr": 1e-3,   "ae_epochs": 30,
-    "ae_batch_size": 128,   "w_if": 1,       "w_ae": 0,
-    "thr_q": 0.95
+    "if_n_estimators": 100,
+    "if_max_samples": "auto",
+    "contamination": 0.01,
+    "ae_encoding_dim": 16,
+    "ae_lr": 1e-3,
+    "ae_epochs": 30,
+    "ae_batch_size": 128,
+    "w_if": 1,
+    "w_ae": 0,
+    "thr_q": 0.95,
 }
 best_usl = {
-    "if_n_estimators": 148, "if_max_samples": 1.0,
+    "if_n_estimators": 148,
+    "if_max_samples": 1.0,
     "contamination": 0.07513614867821206,
-    "ae_encoding_dim": 8,   "ae_lr": 0.0004484570984975867,
-    "ae_epochs": 43,        "ae_batch_size": 64,
-    "w_if": 0.6582947205466332, "thr_q": 0.9691031375838758
+    "ae_encoding_dim": 8,
+    "ae_lr": 0.0004484570984975867,
+    "ae_epochs": 43,
+    "ae_batch_size": 64,
+    "w_if": 0.6582947205466332,
+    "thr_q": 0.9691031375838758,
 }
 best_usl["w_ae"] = 1.0 - best_usl["w_if"]
 for k, v in baseline_params.items():
@@ -61,8 +73,8 @@ def load_and_preprocess_task(gcs_uri: str):
     # resp = requests.get(url)
     # resp.raise_for_status()
     # df = pd.read_csv(BytesIO(resp.content))
-    
-    df['ts'] = pd.to_datetime(df['ts'], unit='s', utc=True)
+
+    df["ts"] = pd.to_datetime(df["ts"], unit="s", utc=True)
 
     df = engineer_flags(df)
     scaler, Xtr, Xte, ytr, yte, X_cols = preprocess(df, random_state=SEED)
@@ -71,7 +83,9 @@ def load_and_preprocess_task(gcs_uri: str):
 
 
 @task
-def usl_task(scaler, Xtr_norm, Xte, yte, X_cols, params: dict, label: str, dry_run: bool):
+def usl_task(
+    scaler, Xtr_norm, Xte, yte, X_cols, params: dict, label: str, dry_run: bool
+):
     """
     Runs Unsupervised training, logs params/metrics/artifacts to MLflow.
     """
@@ -118,7 +132,9 @@ def usl_task(scaler, Xtr_norm, Xte, yte, X_cols, params: dict, label: str, dry_r
 
 
 @task
-def sl_task(scaler, Xtr, ytr, Xte, yte, X_cols, params: dict, label: str, dry_run: bool):
+def sl_task(
+    scaler, Xtr, ytr, Xte, yte, X_cols, params: dict, label: str, dry_run: bool
+):
     """
     Runs Supervised training, logs all necessary artifacts, and registers the model.
     """
@@ -132,15 +148,20 @@ def sl_task(scaler, Xtr, ytr, Xte, yte, X_cols, params: dict, label: str, dry_ru
             return {}
 
         res = train_sl(
-            X_tr=Xtr, y_tr=ytr, X_te=Xte, y_te=yte,
-            **params, random_state=SEED, n_splits=5
+            X_tr=Xtr,
+            y_tr=ytr,
+            X_te=Xte,
+            y_te=yte,
+            **params,
+            random_state=SEED,
+            n_splits=5,
         )
         mlflow.log_metrics(res["test_metrics"])
 
         # log all artifacts and register it
         if label == "optimized":
             logger.info("Logging and registering production model and artifacts...")
-            
+
             with tempfile.TemporaryDirectory() as tmpdir:
                 # scaler
                 scaler_path = os.path.join(tmpdir, "scaler.pkl")
@@ -160,19 +181,17 @@ def sl_task(scaler, Xtr, ytr, Xte, yte, X_cols, params: dict, label: str, dry_ru
 
             # log and register the model
             mlflow.sklearn.log_model(
-                sk_model=res["model"],
-                artifact_path="sklearn-model"
+                sk_model=res["model"], artifact_path="sklearn-model"
             )
             model_uri = f"runs:/{mlflow.active_run().info.run_id}/sklearn-model"
-            mlflow.register_model(
-                model_uri=model_uri,
-                name="iot-anomaly-model"
-            )
+            mlflow.register_model(model_uri=model_uri, name="iot-anomaly-model")
     return res
 
 
 @flow(name="iot_training_pipeline")
-def iot_training_pipeline(run_usl: bool = True, run_sl: bool = True, dry_run: bool = False):
+def iot_training_pipeline(
+    run_usl: bool = True, run_sl: bool = True, dry_run: bool = False
+):
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "file:/mlruns"))
     mlflow.set_experiment("iot_fault_detection")
 
@@ -180,39 +199,39 @@ def iot_training_pipeline(run_usl: bool = True, run_sl: bool = True, dry_run: bo
     bucket = bucket_block.value.strip()
     gcs_data_path = f"gs://{bucket}/data/iot_telemetry_data.csv"
 
-    scaler, Xtr, Xte, ytr, yte, Xtr_norm, X_cols = \
-        load_and_preprocess_task(gcs_data_path)
+    scaler, Xtr, Xte, ytr, yte, Xtr_norm, X_cols = load_and_preprocess_task(
+        gcs_data_path
+    )
 
     outputs = {}
     if run_usl:
         outputs["usl_baseline"] = usl_task(
-            scaler, Xtr_norm, Xte, yte, X_cols,
-            baseline_params, "baseline", dry_run
+            scaler, Xtr_norm, Xte, yte, X_cols, baseline_params, "baseline", dry_run
         )
         outputs["usl_optimized"] = usl_task(
-            scaler, Xtr_norm, Xte, yte, X_cols,
-            best_usl, "optimized", dry_run
+            scaler, Xtr_norm, Xte, yte, X_cols, best_usl, "optimized", dry_run
         )
 
     if run_sl:
         outputs["sl_baseline"] = sl_task(
-            scaler, Xtr, ytr, Xte, yte, X_cols,
-            sl_base_params, "baseline", dry_run
+            scaler, Xtr, ytr, Xte, yte, X_cols, sl_base_params, "baseline", dry_run
         )
 
         outputs["sl_optimized"] = sl_task(
-            scaler, Xtr, ytr, Xte, yte, X_cols,
-            best_sl, "optimized", dry_run
+            scaler, Xtr, ytr, Xte, yte, X_cols, best_sl, "optimized", dry_run
         )
 
     return outputs
+
 
 # cli
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--run_usl", action="store_true", help="Run unsupervised tasks")
     parser.add_argument("--run_sl", action="store_true", help="Run supervised tasks")
-    parser.add_argument("--dry_run", action="store_true", help="Log runs without training")
+    parser.add_argument(
+        "--dry_run", action="store_true", help="Log runs without training"
+    )
     args = parser.parse_args()
 
     run_usl = args.run_usl or (not args.run_sl and not args.dry_run)

@@ -22,7 +22,9 @@ monitoring_deployment = Deployment.build_from_flow(
     flow=model_monitoring_flow,
     name="IoT Model Monitoring",
     work_pool_name="mlops-pool",
-    schedule=(CronSchedule(cron="0 6 * * *", timezone="UTC")) # run flow daily at 6AM UTC
+    schedule=(
+        CronSchedule(cron="0 6 * * *", timezone="UTC")
+    ),  # run flow daily at 6AM UTC
 )
 
 # apply deployments to the server

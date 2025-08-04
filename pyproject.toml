@@ -28,14 +28,17 @@ flask = "^2.2.5"
 gunicorn = "^20.1.0"
 gcsfs = "^2025.7.0"
 google-cloud-storage = "^2.14.0"
-scipy = "^1.11.4"               
+scipy = "^1.11.4"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.2.2" 
-ruff = "^0.5.0" 
-black = "^24.4.2" 
+pytest = "^8.2.2"
+ruff = "^0.5.0"
+black = "^24.4.2"
 pre-commit = "^3.7.1"
 yamllint = "^1.37.1"
+
+[tool.ruff.lint]
+ignore = ["E402"]
 
 [build-system]
 requires = ["poetry-core"]
