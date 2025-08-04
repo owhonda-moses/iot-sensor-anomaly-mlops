@@ -26,7 +26,7 @@ if not MLFLOW_URI:
 mlflow.set_tracking_uri(MLFLOW_URI)
 storage_client = storage.Client()
 
-# global cache for artifacts
+# global cache for model artifacts
 _artifacts = None
 
 
@@ -76,7 +76,6 @@ def get_artifacts():
 
 # prediction
 def predict_iot(raw_df: pd.DataFrame):
-    # Get the scaler, model, etc. from our caching function
     scaler, model, threshold, x_cols = get_artifacts()
 
     df = raw_df.copy()
@@ -109,7 +108,14 @@ def predict_route():
 
     df = pd.DataFrame(payload["data"])
     y_pred, scores = predict_iot(df)
-    return jsonify({"predictions": y_pred.tolist(), "scores": scores.tolist()})
+
+    # format output
+    results = []
+    for pred, score in zip(y_pred, scores):
+        label = "anomaly" if pred == 1 else "normal"
+        results.append({"label": label, "confidence": round(float(score), 2)})
+
+    return jsonify({"results": results})
 
 
 @app.route("/health", methods=["GET"])

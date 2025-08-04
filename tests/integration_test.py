@@ -2,6 +2,7 @@ import os
 import requests
 import pytest
 
+
 SERVICE_URL = os.getenv("SERVICE_URL")
 
 
@@ -25,11 +26,20 @@ def test_prediction_service():
     }
     response = requests.post(f"{SERVICE_URL}/predict", json=payload)
 
+    # check request was successful
     assert response.status_code == 200
 
     # check response structure
     response_json = response.json()
-    assert "predictions" in response_json
-    assert "scores" in response_json
-    assert isinstance(response_json["predictions"], list)
-    assert isinstance(response_json["scores"], list)
+    assert "results" in response_json
+
+    results = response_json["results"]
+    assert isinstance(results, list)
+    assert len(results) > 0
+
+    # check structure of first result object
+    first_result = results[0]
+    assert "label" in first_result
+    assert "confidence" in first_result
+    assert first_result["label"] in ["normal", "anomaly"]
+    assert isinstance(first_result["confidence"], float)

@@ -12,7 +12,7 @@ provider "google" {
   region  = var.region
 }
 
-# required APIs
+# enable eequired APIs
 resource "google_project_service" "apis" {
   for_each = toset([
     "compute.googleapis.com",
@@ -29,15 +29,15 @@ resource "google_project_service" "apis" {
   disable_on_destroy = false
 }
 
-# gcs bucket
+# gcs artifacts bucket
 resource "google_storage_bucket" "artifacts" {
   project = var.project_id
   name = "${var.project_id}-iot-artifacts"
   location = var.region
-  force_destroy = true # Set to false in a real production environment
+  force_destroy = true
 }
 
-# artifact registry
+# artifact registry for docker image
 resource "google_artifact_registry_repository" "docker_repo" {
   project = var.project_id
   location = var.region
@@ -52,34 +52,39 @@ resource "google_service_account" "github_actions_sa" {
   display_name = "GitHub Actions Service Account"
 }
 
-# grant necessary permissions to sa
-resource "google_project_iam_member" "sa_permissions" {
+# permissions for CI/CD pipeline
+resource "google_project_iam_member" "sa_cicd_permissions" {
   for_each = toset([
-    "roles/storage.admin",
-    "roles/artifactregistry.admin",
-    "roles/run.admin",
-    "roles/iam.serviceAccountUser",
-    "roles/cloudsql.client"
+    "roles/storage.admin",            # manage GCS bucket
+    "roles/artifactregistry.admin",   # push docker images
+    "roles/run.admin",                # deploy to cloud run
+    "roles/iam.serviceAccountUser",   # act as other SAs during deployment
+    "roles/cloudsql.client",          # connect cloud run to cloud SQL
+    "roles/cloudbuild.builds.editor"  # use gcloud builds submit
   ])
   project = var.project_id
   role = each.key
   member = google_service_account.github_actions_sa.member
 }
 
-# VPC network for Cloud Run to Cloud SQL
+# permissions for running cloud run services
+data "google_project" "project" {}
+
+resource "google_project_iam_member" "run_services_permissions" {
+  for_each = toset([
+    "roles/storage.objectAdmin", # allows services to write to GCS
+    "roles/cloudsql.client"      # allows MLflow server to connect to Cloud SQL
+  ])
+  project = var.project_id
+  role = each.key
+  member = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+# vpc network for cloud run to cloud SQL
 resource "google_compute_network" "vpc_network" {
   project = var.project_id
   name = "mlops-vpc-network"
   auto_create_subnetworks = false
-}
-
-resource "google_compute_subnetwork" "vpc_subnetwork" {
-  project = var.project_id
-  name = "mlops-subnetwork"
-  ip_cidr_range = "10.10.10.0/24"
-  region = var.region
-  network = google_compute_network.vpc_network.id
-  private_ip_google_access = true
 }
 
 resource "google_vpc_access_connector" "vpc_connector" {
@@ -88,26 +93,19 @@ resource "google_vpc_access_connector" "vpc_connector" {
   region = var.region
   ip_cidr_range = "10.8.0.0/28"
   network = google_compute_network.vpc_network.id
-  depends_on    = [google_project_service.apis]
+  depends_on = [google_project_service.apis["vpcaccess.googleapis.com"]]
 }
 
-# Cloud SQL & DB
+# cloud SQL instance for mlflow
 resource "google_sql_database_instance" "mlflow_pg" {
   project = var.project_id
   name = "mlflow-pg"
   database_version = "POSTGRES_17"
   region = var.region
-
   settings {
     tier = "db-g1-small"
-    availability_type = "REGIONAL"
-    ip_configuration {
-      ipv4_enabled = false
-      private_network = google_compute_network.vpc_network.id
-    }
   }
-
-  depends_on = [google_project_service.apis]
+  depends_on = [google_project_service.apis["sqladmin.googleapis.com"]]
 }
 
 resource "google_sql_database" "mlflow_db" {
@@ -116,26 +114,12 @@ resource "google_sql_database" "mlflow_db" {
   name = "mlflow_db"
 }
 
-resource "google_sql_database" "prefect_db" {
-  project = var.project_id
-  instance = google_sql_database_instance.mlflow_pg.name
-  name = "prefect_db"
-}
-
 resource "google_sql_user" "mlflow_user" {
   project = var.project_id
   instance = google_sql_database_instance.mlflow_pg.name
   name = "mlflow_user"
   password = var.db_password
 }
-
-resource "google_sql_user" "prefect_user" {
-  project  = var.project_id
-  instance = google_sql_database_instance.mlflow_pg.name
-  name     = "prefect_user"
-  password = var.prefect_db_password
-}
-
 
 # GCE VM for prefect server
 resource "google_compute_instance" "prefect_server_vm" {
@@ -148,7 +132,7 @@ resource "google_compute_instance" "prefect_server_vm" {
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
-      size = 50
+      size  = 50
     }
   }
 
@@ -167,8 +151,7 @@ resource "google_compute_instance" "prefect_server_vm" {
       prefecthq/prefect:2-latest \
       prefect server start --host 0.0.0.0 --port 4200
   EOF
-
-  depends_on = [google_project_service.apis]
+  depends_on = [google_project_service.apis["compute.googleapis.com"]]
 }
 
 # firewall rule for prefect UI

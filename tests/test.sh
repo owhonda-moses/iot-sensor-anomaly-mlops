@@ -16,4 +16,4 @@ curl -X POST "https://prediction-service-243279652112.europe-west2.run.app/predi
           "temp": 21.4
         }
       ]
-    }'
+    }' | jq

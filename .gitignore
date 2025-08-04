@@ -28,7 +28,7 @@ debug.py
 # Environment
 .env
 pat.env
-ngrok.env
+secrets.env
 .venv
 env/
 venv/
